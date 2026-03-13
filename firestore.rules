@@ -1,0 +1,92 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (from Firebase Auth)
+    // Fields:
+    //   - name: string (optional) - Display name
+    //   - phone: string (required) - Phone number
+    //   - birthDate: string (optional) - ISO date string
+    //
+    // Collection: users/{userId}/goals
+    // Document ID: auto-generated or timestamp
+    // Fields:
+    //   - title: string (required) - Goal content
+    //   - age: number (required) - Target age (0-100)
+    //   - completed: bool (required) - Achievement status
+    //
+    // Collection: users/{userId}/letters
+    // Document ID: auto-generated or timestamp
+    // Fields:
+    //   - content: string (required) - Letter content
+    //   - unlockAge: number (required) - Age to unlock (0-100)
+    //   - createdAt: timestamp (required) - Creation time
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasOnly(['name', 'phone', 'birthDate']) &&
+             (!('name' in data) || (data.name is string && data.name.size() < 100)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() >= 11 && data.phone.size() <= 15)) &&
+             (!('birthDate' in data) || (data.birthDate is string && (data.birthDate == "" || data.birthDate.matches("^\\d{4}-\\d{2}-\\d{2}$"))));
+    }
+
+    function isValidGoal(data) {
+      return data.keys().hasOnly(['title', 'age', 'completed']) &&
+             (data.title is string && data.title.size() > 0 && data.title.size() < 500) &&
+             (data.age is int && data.age >= 0 && data.age <= 100) &&
+             (data.completed is bool);
+    }
+
+    function isValidLetter(data) {
+      return data.keys().hasOnly(['content', 'unlockAge', 'createdAt']) &&
+             (data.content is string && data.content.size() > 0 && data.content.size() < 5000) &&
+             (data.unlockAge is int && data.unlockAge >= 0 && data.unlockAge <= 100) &&
+             (data.createdAt is timestamp);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+      
+      match /goals/{goalId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidGoal(request.resource.data);
+        allow update: if isOwner(userId) && isValidGoal(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      match /letters/{letterId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidLetter(request.resource.data);
+        allow update: if isOwner(userId) && isValidLetter(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
