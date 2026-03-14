@@ -218,11 +218,7 @@ const App: React.FC = () => {
   const [birthDate, setBirthDate] = useState<string>(() => localStorage.getItem('birthDate') || '');
   const [goals, setGoals] = useState<LifeGoal[]>(() => {
     const saved = localStorage.getItem('goals');
-    return saved ? JSON.parse(saved) : [
-      { id: '1', title: 'Meet the love of my life', age: 28, completed: false },
-      { id: '2', title: 'Travel around the world', age: 45, completed: false },
-      { id: '3', title: 'Enjoy a peaceful retirement', age: 60, completed: false },
-    ];
+    return saved ? JSON.parse(saved) : [];
   });
   const [letters, setLetters] = useState<FutureLetter[]>(() => {
     const saved = localStorage.getItem('letters');
