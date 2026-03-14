@@ -434,6 +434,10 @@ const App: React.FC = () => {
 
       } else {
         setUser(null);
+        // Clear state when logging out to ensure a clean Guest experience
+        setGoals([]);
+        setLetters([]);
+        setBirthDate('');
       }
       setIsAuthReady(true);
     });
@@ -597,16 +601,22 @@ const App: React.FC = () => {
   };
 
   const confirmDeleteGoal = async () => {
-    if (goalToDeleteId && user) {
-      console.log('Confirming goal removal:', goalToDeleteId);
-      try {
-        await deleteDoc(doc(db, 'users', user.id, 'goals', goalToDeleteId));
-        console.log('Goal removed successfully');
-        setGoalToDeleteId(null);
-        setIsDeleteConfirmOpen(false);
-      } catch (err) {
-        handleFirestoreError(err, OperationType.DELETE, `users/${user.id}/goals/${goalToDeleteId}`);
+    if (goalToDeleteId) {
+      if (user) {
+        console.log('Confirming goal removal from Firestore:', goalToDeleteId);
+        try {
+          await deleteDoc(doc(db, 'users', user.id, 'goals', goalToDeleteId));
+          console.log('Goal removed from Firestore successfully');
+        } catch (err) {
+          handleFirestoreError(err, OperationType.DELETE, `users/${user.id}/goals/${goalToDeleteId}`);
+        }
+      } else {
+        // Local deletion
+        console.log('Confirming goal removal from local state:', goalToDeleteId);
+        setGoals(prev => prev.filter(g => g.id !== goalToDeleteId));
       }
+      setGoalToDeleteId(null);
+      setIsDeleteConfirmOpen(false);
     }
   };
 
@@ -719,16 +729,22 @@ const App: React.FC = () => {
   };
 
   const confirmDeleteLetter = async () => {
-    if (letterToDeleteId && user) {
-      console.log('Confirming letter removal:', letterToDeleteId);
-      try {
-        await deleteDoc(doc(db, 'users', user.id, 'letters', letterToDeleteId));
-        console.log('Letter removed successfully');
-        setLetterToDeleteId(null);
-        setIsDeleteConfirmOpen(false);
-      } catch (err) {
-        handleFirestoreError(err, OperationType.DELETE, `users/${user.id}/letters/${letterToDeleteId}`);
+    if (letterToDeleteId) {
+      if (user) {
+        console.log('Confirming letter removal from Firestore:', letterToDeleteId);
+        try {
+          await deleteDoc(doc(db, 'users', user.id, 'letters', letterToDeleteId));
+          console.log('Letter removed from Firestore successfully');
+        } catch (err) {
+          handleFirestoreError(err, OperationType.DELETE, `users/${user.id}/letters/${letterToDeleteId}`);
+        }
+      } else {
+        // Local deletion
+        console.log('Confirming letter removal from local state:', letterToDeleteId);
+        setLetters(prev => prev.filter(l => l.id !== letterToDeleteId));
       }
+      setLetterToDeleteId(null);
+      setIsDeleteConfirmOpen(false);
     }
   };
 
@@ -1123,11 +1139,25 @@ const App: React.FC = () => {
                   animate={{ opacity: 1, x: 0 }}
                   className="bg-white p-8 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-[#F5F5F4] flex flex-col min-h-[420px] w-full"
                 >
-                  <div className="flex items-center gap-3 mb-8 shrink-0">
-                    <div className="p-2 bg-[#FEF2F2] rounded-xl text-[#F43F5E]">
-                      <Target size={20} />
+                  <div className="flex items-center justify-between mb-8 shrink-0">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-[#FEF2F2] rounded-xl text-[#F43F5E]">
+                        <Target size={20} />
+                      </div>
+                      <h3 className="text-xl font-serif font-bold text-[#2D2A26]">Life Wishlist</h3>
                     </div>
-                    <h3 className="text-xl font-serif font-bold text-[#2D2A26]">Life Wishlist</h3>
+                    {!user && goals.length > 0 && (
+                      <button 
+                        onClick={() => {
+                          if (confirm('Clear all local goals?')) {
+                            setGoals([]);
+                          }
+                        }}
+                        className="text-[10px] font-bold text-stone-400 hover:text-rose-500 uppercase tracking-widest transition-colors"
+                      >
+                        Clear All
+                      </button>
+                    )}
                   </div>
 
                   <div className="flex flex-col gap-4 mb-8 shrink-0">
@@ -1236,19 +1266,33 @@ const App: React.FC = () => {
                       </div>
                       <h3 className="text-xl font-serif font-bold text-[#2D2A26]">Time Capsule</h3>
                     </div>
-                    <button 
-                      onClick={() => {
-                        if (!isWritingLetter) {
-                          setWritingLetterType('general');
-                          setCurrentInspiration(null);
-                        }
-                        setIsWritingLetter(!isWritingLetter);
-                      }}
-                      className="flex items-center gap-1.5 text-xs font-bold text-amber-600 uppercase tracking-widest hover:text-amber-700 transition-colors"
-                    >
-                      {!isWritingLetter && <Feather size={12} />}
-                      {isWritingLetter ? 'Cancel' : 'Write a Letter'}
-                    </button>
+                    <div className="flex items-center gap-4">
+                      {!user && letters.length > 0 && (
+                        <button 
+                          onClick={() => {
+                            if (confirm('Clear all local letters?')) {
+                              setLetters([]);
+                            }
+                          }}
+                          className="text-[10px] font-bold text-stone-400 hover:text-amber-600 uppercase tracking-widest transition-colors"
+                        >
+                          Clear All
+                        </button>
+                      )}
+                      <button 
+                        onClick={() => {
+                          if (!isWritingLetter) {
+                            setWritingLetterType('general');
+                            setCurrentInspiration(null);
+                          }
+                          setIsWritingLetter(!isWritingLetter);
+                        }}
+                        className="flex items-center gap-1.5 text-xs font-bold text-amber-600 uppercase tracking-widest hover:text-amber-700 transition-colors"
+                      >
+                        {!isWritingLetter && <Feather size={12} />}
+                        {isWritingLetter ? 'Cancel' : 'Write a Letter'}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="min-h-[220px] flex flex-col">
