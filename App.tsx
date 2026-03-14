@@ -910,7 +910,7 @@ const App: React.FC = () => {
           {/* Controls Group - Spread on Mobile, Right-aligned on Desktop */}
           <div className="flex items-center justify-between w-full md:w-auto md:justify-end gap-4">
             {/* Date Picker */}
-            <div className="relative flex items-center bg-white/50 backdrop-blur-sm px-3 rounded-2xl border border-[#E7E5E4] shadow-sm h-[38px] min-w-[140px] overflow-hidden group hover:bg-white/80 transition-all cursor-pointer active:scale-95">
+            <div className="relative flex items-center bg-white/50 backdrop-blur-sm px-3 rounded-2xl border border-[#E7E5E4] shadow-sm h-[38px] min-w-[140px] group hover:bg-white/80 transition-all cursor-pointer active:scale-95">
               <Calendar size={14} className="text-[#A8A29E] mr-2 shrink-0 pointer-events-none" />
               <div className="flex-1 text-sm font-medium text-[#57534E] whitespace-nowrap pointer-events-none">
                 {birthDate && !isNaN(new Date(birthDate).getTime()) ? format(new Date(birthDate), 'MM / dd / yyyy') : 'M / D / Y'}
@@ -920,6 +920,13 @@ const App: React.FC = () => {
                 className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20 appearance-none full-clickable-date-input"
                 value={birthDate}
                 onChange={(e) => setBirthDate(e.target.value)}
+                onClick={(e) => {
+                  try {
+                    (e.target as any).showPicker();
+                  } catch (err) {
+                    // Fallback for browsers that don't support showPicker()
+                  }
+                }}
                 title="Select Birth Date"
               />
             </div>
