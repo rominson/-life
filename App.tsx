@@ -216,6 +216,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
 const App: React.FC = () => {
   const [birthDate, setBirthDate] = useState<string>(() => localStorage.getItem('birthDate') || '');
+  const dateInputRef = useRef<HTMLInputElement>(null);
   const [goals, setGoals] = useState<LifeGoal[]>(() => {
     const saved = localStorage.getItem('goals');
     return saved ? JSON.parse(saved) : [];
@@ -910,12 +911,17 @@ const App: React.FC = () => {
           {/* Controls Group - Spread on Mobile, Right-aligned on Desktop */}
           <div className="flex items-center justify-between w-full md:w-auto md:justify-end gap-4">
             {/* Date Picker */}
-            <div className="flex items-center bg-white/50 backdrop-blur-sm px-3 rounded-2xl border border-[#E7E5E4] shadow-sm h-[38px]">
+            <div className="relative flex items-center bg-white/50 backdrop-blur-sm px-3 rounded-2xl border border-[#E7E5E4] shadow-sm h-[38px] min-w-[140px] overflow-hidden group hover:bg-white/80 transition-all cursor-pointer active:scale-95">
+              <Calendar size={14} className="text-[#A8A29E] mr-2 shrink-0 pointer-events-none" />
+              <div className="flex-1 text-sm font-medium text-[#57534E] whitespace-nowrap pointer-events-none">
+                {birthDate && !isNaN(new Date(birthDate).getTime()) ? format(new Date(birthDate), 'MM / dd / yyyy') : 'M / D / Y'}
+              </div>
               <input 
                 type="date" 
-                className="bg-transparent border-none text-sm focus:ring-0 outline-none transition-all font-medium text-[#57534E] w-32 p-0"
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20 appearance-none full-clickable-date-input"
                 value={birthDate}
                 onChange={(e) => setBirthDate(e.target.value)}
+                title="Select Birth Date"
               />
             </div>
 
