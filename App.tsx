@@ -216,7 +216,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
 const App: React.FC = () => {
   const [birthDate, setBirthDate] = useState<string>(() => localStorage.getItem('birthDate') || '');
-  const dateInputRef = useRef<HTMLInputElement>(null);
   const [goals, setGoals] = useState<LifeGoal[]>(() => {
     const saved = localStorage.getItem('goals');
     return saved ? JSON.parse(saved) : [];
