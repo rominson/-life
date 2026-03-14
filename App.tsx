@@ -1,4 +1,5 @@
 
+// LifeGrid Application - Main Entry Point
 import React, { useState, useMemo, useEffect, useRef, useCallback, Component } from 'react';
 import { 
   Calendar, 
@@ -1847,7 +1848,7 @@ const App: React.FC = () => {
                 <h3 className="text-2xl font-bold text-stone-800 mb-4 tracking-tight">Welcome to LifeGrid</h3>
                 
                 <p className="text-stone-600 text-sm leading-relaxed mb-8 italic">
-                  “Guardian, how should we address you?<br />This name will be engraved on your Time Certificate.”
+                  "Guardian, how should we address you?<br />This name will be engraved on your Time Certificate."
                 </p>
 
                 <div className="w-full space-y-6">
