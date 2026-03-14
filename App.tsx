@@ -534,26 +534,34 @@ const App: React.FC = () => {
       const dataUrl = await domToPng(el, {
         scale: 3,
         backgroundColor: allCertificates[currentCertificateIndex].isCenturyTraveler ? '#020617' : '#F5F2ED',
+        features: {
+          copyScrollbar: true,
+        }
       });
 
       setDownloadedImage(dataUrl);
       
-      const link = document.createElement('a');
-      link.style.display = 'none';
-      link.href = dataUrl;
-      link.download = `LifeGrid-Certificate-${allCertificates[currentCertificateIndex].id}.png`;
+      if (isMobile) {
+        // On mobile, show preview for long-press saving
+        setIsImagePreviewOpen(true);
+      } else {
+        // On desktop, trigger direct download
+        const link = document.createElement('a');
+        link.style.display = 'none';
+        link.href = dataUrl;
+        link.download = `LifeGrid-Certificate-${allCertificates[currentCertificateIndex].id}.png`;
+        
+        document.body.appendChild(link);
+        link.click();
+        
+        setTimeout(() => {
+          if (document.body.contains(link)) {
+            document.body.removeChild(link);
+          }
+        }, 100);
+      }
       
-      document.body.appendChild(link);
-      link.click();
-      
-      // Clean up
-      setTimeout(() => {
-        if (document.body.contains(link)) {
-          document.body.removeChild(link);
-        }
-      }, 100);
-      
-      console.log('Download triggered successfully');
+      console.log('Capture successful');
     } catch (error) {
       console.error('Certificate capture failed:', error);
       alert('Failed to save certificate. Please try again or take a screenshot.');
@@ -1594,14 +1602,14 @@ const App: React.FC = () => {
                             <div className="absolute bottom-[6px] left-[6px] w-8 h-8 border-b border-l border-[rgba(96,165,250,0.3)] rounded-bl-sm pointer-events-none z-30" />
                             <div className="absolute bottom-[6px] right-[6px] w-8 h-8 border-b border-r border-[rgba(96,165,250,0.3)] rounded-br-sm pointer-events-none z-30" />
 
-                            <div className="absolute top-3 left-1/2 -translate-x-1/2 md:top-6">
+                            <div className="absolute top-3 left-1/2 -translate-x-1/2 md:top-6 w-full flex justify-center">
                               <motion.div 
                                 initial={{ opacity: 0, scale: 0.5 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                className="bg-gradient-to-r from-[rgba(37,99,235,0.2)] to-[rgba(79,70,229,0.2)] border border-[rgba(96,165,250,0.4)] px-2 py-0.5 md:px-3 md:py-1 rounded-full flex items-center gap-1 md:gap-1.5 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
+                                className="bg-gradient-to-r from-[rgba(37,99,235,0.2)] to-[rgba(79,70,229,0.2)] border border-[rgba(96,165,250,0.4)] px-2 py-0.5 md:px-3 md:py-1 rounded-full flex items-center gap-1 md:gap-1.5 shadow-[0_0_15px_rgba(59,130,246,0.2)] whitespace-nowrap"
                               >
-                                <Sparkles size={12} className="text-[#93c5fd]" />
-                                <span className="text-[8px] md:text-[10px] font-bold text-[#bfdbfe] uppercase tracking-[0.2em]">22nd Century Witness</span>
+                                <Sparkles size={12} className="text-[#93c5fd] shrink-0" />
+                                <span className="text-[8px] md:text-[10px] font-bold text-[#bfdbfe] uppercase tracking-[0.2em] whitespace-nowrap">22nd Century Witness</span>
                               </motion.div>
                             </div>
                           </>
@@ -1705,10 +1713,11 @@ const App: React.FC = () => {
                             `}>
                               <QRCodeSVG 
                                 value={window.location.href} 
-                                size={isMobile ? 40 : 64}
-                                level="L"
-                                includeMargin={false}
-                                fgColor={allCertificates[currentCertificateIndex].isCenturyTraveler ? "#1E293B" : "#2D2A26"}
+                                size={isMobile ? 44 : 64}
+                                level="M"
+                                includeMargin={true}
+                                marginSize={1}
+                                fgColor={allCertificates[currentCertificateIndex].isCenturyTraveler ? "#0F172A" : "#2D2A26"}
                               />
                             </div>
                           </div>
@@ -1730,26 +1739,15 @@ const App: React.FC = () => {
                               `}>
                                 
                                 {/* Exquisite Pattern SVG with Gold Foil Effect - Scheme C: Tree of Rings */}
-                                <svg viewBox="0 0 100 100" className="w-[85%] h-[85%] drop-shadow-[0.5px_0.5px_0.5px_rgba(255,255,255,0.2)]">
+                                <svg viewBox="0 0 100 100" className="w-[85%] h-[85%]">
                                   <defs>
                                     <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                                       <stop offset="0%" stopColor="#D4AF37" />
-                                      <stop offset="25%" stopColor="#F9E29C" />
-                                      <stop offset="50%" stopColor="#B8860B" />
-                                      <stop offset="75%" stopColor="#FFD700" />
+                                      <stop offset="50%" stopColor="#FFD700" />
                                       <stop offset="100%" stopColor="#AA8A2E" />
                                     </linearGradient>
-                                    <filter id="emboss" x="-20%" y="-20%" width="140%" height="140%">
-                                      <feGaussianBlur in="SourceAlpha" stdDeviation="0.4" result="blur" />
-                                      <feSpecularLighting in="blur" surfaceScale="2.5" specularConstant="1.2" specularExponent="25" lightingColor="#white" result="specOut">
-                                        <fePointLight x="-5000" y="-10000" z="20000" />
-                                      </feSpecularLighting>
-                                      <feComposite in="specOut" in2="SourceAlpha" operator="in" result="specOut" />
-                                      <feComposite in="SourceGraphic" in2="specOut" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="litGraphic" />
-                                    </filter>
                                   </defs>
-                                  
-                                  <g filter="url(#emboss)" fill="none" stroke="url(#goldGradient)">
+                                  <g fill="none" stroke="url(#goldGradient)">
                                     {/* Scheme C: Tree Rings (Concentric, slightly irregular) */}
                                     <circle cx="50" cy="50" r="42" strokeWidth="0.5" opacity="0.6" />
                                     <path d="M50 8 A42 42 0 0 1 92 50" strokeWidth="1.2" strokeLinecap="round" />
@@ -2142,7 +2140,9 @@ const App: React.FC = () => {
                 <div className="p-6 border-b border-stone-100 flex justify-between items-center">
                   <div>
                     <h3 className="text-xl font-bold text-stone-800">Certificate Preview</h3>
-                    <p className="text-xs text-stone-500 mt-1">Long press image or click button below to save</p>
+                    <p className="text-xs text-stone-500 mt-1">
+                      {isMobile ? "Long press the image to 'Save to Photos'" : "Click the button below to download"}
+                    </p>
                   </div>
                   <button 
                     onClick={() => setIsImagePreviewOpen(false)}
@@ -2161,19 +2161,25 @@ const App: React.FC = () => {
                 </div>
                 
                 <div className="p-6 bg-white border-t border-stone-100 flex flex-col sm:flex-row gap-4">
-                  <a 
-                    href={downloadedImage} 
-                    download={`life-grid-certificate-${allCertificates[currentCertificateIndex].id}.png`}
-                    className="flex-1 px-8 py-4 bg-stone-900 text-white rounded-full text-sm font-bold transition-all shadow-xl flex items-center justify-center gap-2 hover:bg-stone-800"
-                  >
-                    <Download size={18} />
-                    Confirm Download
-                  </a>
+                  {isMobile ? (
+                    <div className="flex-1 text-center py-2 px-4 bg-blue-50 text-blue-700 rounded-xl text-xs font-medium">
+                      💡 Tip: Long press the image above and select <b>"Save to Photos"</b> or <b>"Add to Photos"</b>.
+                    </div>
+                  ) : (
+                    <a 
+                      href={downloadedImage} 
+                      download={`life-grid-certificate-${allCertificates[currentCertificateIndex].id}.png`}
+                      className="flex-1 px-8 py-4 bg-stone-900 text-white rounded-full text-sm font-bold transition-all shadow-xl flex items-center justify-center gap-2 hover:bg-stone-800"
+                    >
+                      <Download size={18} />
+                      Confirm Download
+                    </a>
+                  )}
                   <button 
                     onClick={() => setIsImagePreviewOpen(false)}
-                    className="px-8 py-4 bg-stone-100 text-stone-600 rounded-full text-sm font-bold transition-all hover:bg-stone-200"
+                    className={`px-8 py-4 rounded-full text-sm font-bold transition-all ${isMobile ? 'bg-stone-900 text-white w-full' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'}`}
                   >
-                    Cancel
+                    {isMobile ? 'Got it' : 'Cancel'}
                   </button>
                 </div>
               </motion.div>
