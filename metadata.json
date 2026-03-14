@@ -1,5 +1,5 @@
 {
-  "name": "时光织锦Life",
-  "description": "时光织锦Life - 一个诗意的生命旅程可视化工具。记录你的生命足迹，设定未来愿望，并向未来的自己寄出一封跨越时空的信。支持手机号登录，实时同步你的生命数据与时光信囊。",
+  "name": "LifeGrid",
+  "description": " a poetic life journey visualization tool. Record your life footprints, set future wishes, and send a letter across time and space to your future self. Supports mobile phone number login and real-time synchronization of your life data and time capsules.",
   "requestFramePermissions": []
 }

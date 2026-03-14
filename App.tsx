@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect, useRef, Component } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback, Component } from 'react';
 import { 
   Calendar, 
   Clock, 
@@ -16,6 +16,7 @@ import {
   User,
   LogOut,
   Smartphone,
+  LogIn,
   Lock,
   Unlock,
   Send,
@@ -33,16 +34,18 @@ import {
 import { format, differenceInDays, differenceInMonths, addYears, differenceInYears } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
+import { domToPng } from 'modern-screenshot';
 
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 
 // Firebase Imports
 import { 
-  signInWithPhoneNumber, 
-  RecaptchaVerifier, 
   onAuthStateChanged, 
   signOut,
-  ConfirmationResult
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 import { 
   doc, 
@@ -52,11 +55,13 @@ import {
   collection, 
   onSnapshot, 
   query, 
+  where,
   orderBy,
   deleteDoc,
   getDocFromServer,
   Timestamp,
-  writeBatch
+  writeBatch,
+  serverTimestamp
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
@@ -79,22 +84,22 @@ interface FutureLetter {
 
 const WRITING_PROMPTS = {
   general: [
-    "你现在最想实现的愿望是什么？",
-    "此时此刻，你最想感谢的人是谁？",
-    "想象一下，10年后的你正在过着怎样的生活？",
-    "给未来的自己一个建议吧。",
-    "记录下今天让你感到快乐的一件小事。",
-    "现在的你，最害怕失去的是什么？",
-    "写下一个你希望未来永远不要忘记的瞬间。"
+    "What is the wish you want to fulfill most right now?",
+    "Who is the person you want to thank most at this moment?",
+    "Imagine what kind of life you will be living in 10 years?",
+    "Give a piece of advice to your future self.",
+    "Record a small thing that made you happy today.",
+    "What do you fear losing most right now?",
+    "Write down a moment you hope you will never forget in the future."
   ],
   century: [
-    "你对22世纪的世界有什么样的幻想？",
-    "如果2100年的你还能看到这封信，你想对自己说什么？",
-    "你希望人类在下个世纪解决了哪些问题？",
-    "给2100年的后代留一句话吧。",
-    "你认为那时候的人们还会使用现在的这些科技吗？",
-    "想象一下，2100年的早晨，你醒来看到的第一个画面。",
-    "如果能跨越时空，你想带给下个世纪的人什么礼物？"
+    "What kind of fantasies do you have about the world in the 22nd century?",
+    "If you in 2100 can still see this letter, what do you want to say to yourself?",
+    "What problems do you hope humanity will have solved in the next century?",
+    "Leave a message for your descendants in 2100.",
+    "Do you think people then will still use the technology we have now?",
+    "Imagine the first scene you see when you wake up on a morning in 2100.",
+    "If you could travel through time, what gift would you bring to people of the next century?"
   ]
 };
 
@@ -147,7 +152,7 @@ const handleFirestoreError = (error: unknown, operationType: OperationType, path
     path
   };
   console.error('Firestore Error: ', JSON.stringify(errInfo));
-  // In a real app, you might show a toast or throw to an ErrorBoundary
+  throw new Error(JSON.stringify(errInfo));
 };
 
 interface ErrorBoundaryProps {
@@ -184,9 +189,9 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
             <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center text-rose-500 mx-auto mb-6">
               <X size={32} />
             </div>
-            <h2 className="text-2xl font-serif font-bold text-stone-800 mb-4">糟糕，出错了</h2>
+            <h2 className="text-2xl font-serif font-bold text-stone-800 mb-4">Oops, something went wrong</h2>
             <p className="text-stone-500 text-sm mb-8">
-              系统遇到了一些问题。请尝试刷新页面，或者联系我们。
+              The system encountered some issues. Please try refreshing the page or contact us.
             </p>
             {this.state.errorInfo && (
               <pre className="text-[10px] bg-stone-100 p-4 rounded-xl text-left overflow-auto max-h-40 mb-8">
@@ -197,7 +202,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
               onClick={() => window.location.reload()}
               className="px-8 py-3 bg-stone-800 text-white rounded-full text-sm font-bold shadow-lg"
             >
-              刷新页面
+              Refresh Page
             </button>
           </div>
         </div>
@@ -213,9 +218,9 @@ const App: React.FC = () => {
   const [goals, setGoals] = useState<LifeGoal[]>(() => {
     const saved = localStorage.getItem('goals');
     return saved ? JSON.parse(saved) : [
-      { id: '1', title: '遇见生命中的另一半', age: 28, completed: false },
-      { id: '2', title: '环游世界', age: 45, completed: false },
-      { id: '3', title: '享受宁静的退休生活', age: 60, completed: false },
+      { id: '1', title: 'Meet the love of my life', age: 28, completed: false },
+      { id: '2', title: 'Travel around the world', age: 45, completed: false },
+      { id: '3', title: 'Enjoy a peaceful retirement', age: 60, completed: false },
     ];
   });
   const [letters, setLetters] = useState<FutureLetter[]>(() => {
@@ -247,30 +252,27 @@ const App: React.FC = () => {
     isCenturyTraveler?: boolean;
   } | null>(null);
   const [pendingLetter, setPendingLetter] = useState<{ content: string; age: number } | null>(null);
-  const [user, setUser] = useState<{ id: string; name: string; phone?: string } | null>(null);
+  const [user, setUser] = useState<{ id: string; name: string; email?: string } | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [loginMethod, setLoginMethod] = useState<'phone'>('phone');
-  const [loginPhone, setLoginPhone] = useState('');
-  const [loginSmsCode, setLoginSmsCode] = useState('');
-  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [loginMethod, setLoginMethod] = useState<'email' | 'google'>('email');
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isSubmittingReminder, setIsSubmittingReminder] = useState(false);
   const [isUpdatingName, setIsUpdatingName] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
   const [letterToDeleteId, setLetterToDeleteId] = useState<string | null>(null);
+  const [goalToDeleteId, setGoalToDeleteId] = useState<string | null>(null);
   const [letterError, setLetterError] = useState('');
   const [goalError, setGoalError] = useState('');
-  const [isHumanVerified, setIsHumanVerified] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadedImage, setDownloadedImage] = useState<string | null>(null);
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const certificateRef = useRef<HTMLDivElement>(null);
-  const recaptchaRef = useRef<HTMLDivElement>(null);
-  const verifierRef = useRef<RecaptchaVerifier | null>(null);
-  const confirmationResultRef = useRef<ConfirmationResult | null>(null);
 
   const [stats, setStats] = useState<{
     daysLived: number;
@@ -334,7 +336,7 @@ const App: React.FC = () => {
       const createdAt = new Date(letter.createdAt);
       return {
         id: letter.id.slice(-8).toUpperCase(),
-        sender: user.name || '时空旅者',
+        sender: user.name || 'Time Traveler',
         departureYear: createdAt.getFullYear(),
         arrivalYear: unlockDate.getFullYear(),
         arrivalAge: letter.unlockAge,
@@ -381,36 +383,56 @@ const App: React.FC = () => {
 
       if (firebaseUser) {
         // User is logged in
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        
-        const userData = userDoc.exists() ? userDoc.data() : {};
-        
-        setUser({
-          id: firebaseUser.uid,
-          name: userData.name || `用户 ${firebaseUser.phoneNumber?.slice(-4) || '未知'}`,
-          phone: firebaseUser.phoneNumber || ''
-        });
+        try {
+          const userDocRef = doc(db, 'users', firebaseUser.uid);
+          const userDoc = await getDoc(userDocRef);
+          
+          const userData = userDoc.exists() ? userDoc.data() : {};
+          
+          setUser({
+            id: firebaseUser.uid,
+            name: userData.name || firebaseUser.displayName || `User ${firebaseUser.email?.split('@')[0] || 'Unknown'}`,
+            email: firebaseUser.email || ''
+          });
 
-        if (!userData.name) {
-          setIsOnboardingModalOpen(true);
+          if (!userData.name) {
+            setIsOnboardingModalOpen(true);
+          }
+
+          if (userData.birthDate) setBirthDate(userData.birthDate);
+        } catch (err) {
+          handleFirestoreError(err, OperationType.GET, `users/${firebaseUser.uid}`);
         }
-
-        if (userData.birthDate) setBirthDate(userData.birthDate);
 
         // Fetch Subcollections
         const goalsQuery = query(collection(db, 'users', firebaseUser.uid, 'goals'), orderBy('age', 'asc'));
         unsubscribeGoals = onSnapshot(goalsQuery, (snapshot) => {
-          setGoals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LifeGoal)));
+          const uniqueGoals: LifeGoal[] = [];
+          const seenIds = new Set();
+          snapshot.docs.forEach(doc => {
+            if (!seenIds.has(doc.id)) {
+              uniqueGoals.push({ id: doc.id, ...doc.data() } as LifeGoal);
+              seenIds.add(doc.id);
+            }
+          });
+          setGoals(uniqueGoals);
         }, (err) => handleFirestoreError(err, OperationType.LIST, `users/${firebaseUser.uid}/goals`));
 
         const lettersQuery = query(collection(db, 'users', firebaseUser.uid, 'letters'), orderBy('unlockAge', 'asc'));
         unsubscribeLetters = onSnapshot(lettersQuery, (snapshot) => {
-          setLetters(snapshot.docs.map(doc => ({ 
-            id: doc.id, 
-            ...doc.data(),
-            createdAt: (doc.data().createdAt as Timestamp).toDate().toISOString()
-          } as FutureLetter)));
+          const uniqueLetters: FutureLetter[] = [];
+          const seenIds = new Set();
+          snapshot.docs.forEach(doc => {
+            if (!seenIds.has(doc.id)) {
+              uniqueLetters.push({ 
+                id: doc.id, 
+                ...doc.data(),
+                createdAt: (doc.data().createdAt as Timestamp).toDate().toISOString()
+              } as FutureLetter);
+              seenIds.add(doc.id);
+            }
+          });
+          setLetters(uniqueLetters);
         }, (err) => handleFirestoreError(err, OperationType.LIST, `users/${firebaseUser.uid}/letters`));
 
       } else {
@@ -445,6 +467,28 @@ const App: React.FC = () => {
   // Helper to convert any color to RGBA using canvas
   const convertToRgba = (color: string): string => {
     if (!color || color === 'transparent' || color === 'none') return color;
+    
+    // Fallback for oklch/oklab which html2canvas cannot parse
+    if (color.includes('oklch') || color.includes('oklab') || color.includes('color-mix')) {
+      if (color.includes('white') || color.includes('100%')) return 'rgba(255,255,255,1)';
+      if (color.includes('black') || color.includes(' 0%')) return 'rgba(0,0,0,1)';
+      
+      // Try to use a temporary element to let the browser resolve it to rgb
+      try {
+        const temp = document.createElement('div');
+        temp.style.color = color;
+        document.body.appendChild(temp);
+        const resolved = window.getComputedStyle(temp).color;
+        document.body.removeChild(temp);
+        if (resolved && !resolved.includes('oklch') && !resolved.includes('oklab')) {
+          return resolved;
+        }
+      } catch (e) {
+        // Fallback to gray if resolution fails
+        return 'rgba(128,128,128,1)';
+      }
+    }
+
     try {
       const canvas = document.createElement('canvas');
       canvas.width = 1;
@@ -463,95 +507,44 @@ const App: React.FC = () => {
   const handleDownloadCertificate = async () => {
     if (isDownloading) return;
     
-    console.log('Attempting to download certificate...');
-    if (!certificateRef.current) {
-      console.error('Certificate ref is null!');
-      alert('保存失败：未找到证书元素');
+    const el = certificateRef.current;
+    if (!el) {
+      alert('Save failed: Certificate element not found');
       return;
     }
     
     setIsDownloading(true);
     
     try {
-      // 稍微等待一下，确保二维码等异步内容渲染完成
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // 1. Wait for everything to settle and fonts to be ready
+      await Promise.all([
+        new Promise(resolve => setTimeout(resolve, 2000)),
+        document.fonts.ready
+      ]);
       
-      console.log('Capturing canvas with html2canvas...');
-      const canvas = await html2canvas(certificateRef.current, {
-        scale: 2, 
-        useCORS: true, 
-        backgroundColor: null,
-        logging: false,
-        onclone: (clonedDoc) => {
-          // 1. Hide external textures that might cause CORS issues during capture
-          const textures = clonedDoc.querySelectorAll('[class*="bg-[url("]');
-          textures.forEach(el => {
-            (el as HTMLElement).style.backgroundImage = 'none';
-          });
-
-          // 2. Global CSS Variable Reset
-          const styleTag = clonedDoc.createElement('style');
-          styleTag.innerHTML = `
-            * { 
-              --tw-ring-color: transparent !important;
-              --tw-shadow-color: transparent !important;
-              --tw-outline-color: transparent !important;
-            }
-          `;
-          clonedDoc.head.appendChild(styleTag);
-
-          // 3. Element-by-element color conversion
-          const allElements = clonedDoc.querySelectorAll('*');
-          const view = clonedDoc.defaultView || window;
-          
-          allElements.forEach(el => {
-            try {
-              const htmlEl = el as HTMLElement;
-              const style = view.getComputedStyle(htmlEl);
-              
-              // Standard color properties
-              const colorProps = [
-                'color', 'backgroundColor', 'borderColor', 'borderTopColor', 
-                'borderRightColor', 'borderBottomColor', 'borderLeftColor', 
-                'fill', 'stroke', 'outlineColor', 'columnRuleColor',
-                'textDecorationColor', 'textEmphasisColor'
-              ];
-              
-              colorProps.forEach(prop => {
-                const val = style.getPropertyValue(prop);
-                if (val && (val.includes('oklab') || val.includes('oklch') || val.includes('color-mix'))) {
-                  const resolvedColor = convertToRgba(val);
-                  if (resolvedColor && !resolvedColor.includes('oklab') && !resolvedColor.includes('oklch')) {
-                    htmlEl.style.setProperty(prop, resolvedColor, 'important');
-                  }
-                }
-              });
-
-              // Complex properties: boxShadow, textShadow
-              const complexProps = ['boxShadow', 'textShadow'];
-              complexProps.forEach(prop => {
-                const val = (style as any)[prop];
-                if (val && (val.includes('oklab') || val.includes('oklch') || val.includes('color-mix'))) {
-                  htmlEl.style.setProperty(prop, 'none', 'important');
-                }
-              });
-            } catch (e) {
-              // Ignore errors for individual elements
-            }
-          });
-        }
+      // 2. Ensure all images are loaded
+      const images = el.querySelectorAll('img');
+      await Promise.all(Array.from(images).map(img => {
+        const image = img as HTMLImageElement;
+        if (image.complete) return Promise.resolve();
+        return new Promise(resolve => {
+          image.onload = resolve;
+          image.onerror = resolve;
+        });
+      }));
+      
+      // 3. Capture with high precision
+      const dataUrl = await domToPng(el, {
+        scale: 3,
+        backgroundColor: allCertificates[currentCertificateIndex].isCenturyTraveler ? '#020617' : '#F5F2ED',
       });
+
+      setDownloadedImage(dataUrl);
       
-      console.log('Canvas captured, generating image URL...');
-      const image = canvas.toDataURL('image/png', 1.0);
-      setDownloadedImage(image);
-      setIsImagePreviewOpen(true);
-      
-      // Attempt automatic download as well
       const link = document.createElement('a');
       link.style.display = 'none';
-      link.href = image;
-      link.download = `时光织锦-证书-${allCertificates[currentCertificateIndex].id}.png`;
+      link.href = dataUrl;
+      link.download = `LifeGrid-Certificate-${allCertificates[currentCertificateIndex].id}.png`;
       
       document.body.appendChild(link);
       link.click();
@@ -564,29 +557,28 @@ const App: React.FC = () => {
       }, 100);
       
       console.log('Download triggered successfully');
-    } catch (error: any) {
-      console.error('保存证书失败:', error);
-      alert(`保存证书失败:\n${error.message || '未知错误'}\n\n提示：如果下载失败，您可以尝试直接截图保存。`);
+    } catch (error) {
+      console.error('Certificate capture failed:', error);
+      alert('Failed to save certificate. Please try again or take a screenshot.');
     } finally {
       setIsDownloading(false);
     }
   };
-
   const addGoal = async () => {
     if (!user) {
       setIsLoginModalOpen(true);
       return;
     }
     if (!newGoalTitle.trim()) {
-      setGoalError('请输入愿望内容');
+      setGoalError('Please enter the goal content');
       return;
     }
     if (newGoalAge === '') {
-      setGoalError('请输入预期年龄');
+      setGoalError('Please enter the target age');
       return;
     }
     if (typeof newGoalAge === 'number' && (newGoalAge < 0 || newGoalAge > MAX_AGE_YEARS)) {
-      setGoalError(`年龄必须在 0 到 ${MAX_AGE_YEARS} 岁之间`);
+      setGoalError(`Age must be between 0 and ${MAX_AGE_YEARS}`);
       return;
     }
 
@@ -602,12 +594,22 @@ const App: React.FC = () => {
     }
   };
 
-  const removeGoal = async (id: string) => {
-    if (!user) return;
-    try {
-      await deleteDoc(doc(db, 'users', user.id, 'goals', id));
-    } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, `users/${user.id}/goals/${id}`);
+  const removeGoal = (id: string) => {
+    setGoalToDeleteId(id);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteGoal = async () => {
+    if (goalToDeleteId && user) {
+      console.log('Confirming goal removal:', goalToDeleteId);
+      try {
+        await deleteDoc(doc(db, 'users', user.id, 'goals', goalToDeleteId));
+        console.log('Goal removed successfully');
+        setGoalToDeleteId(null);
+        setIsDeleteConfirmOpen(false);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.DELETE, `users/${user.id}/goals/${goalToDeleteId}`);
+      }
     }
   };
 
@@ -630,25 +632,25 @@ const App: React.FC = () => {
     }
     if (writingLetterType === 'general') {
       if (!newLetterContent.trim()) {
-        setLetterError('请先写下你想说的话');
+        setLetterError('Please write down what you want to say first');
         return;
       }
       if (newLetterAge === '') {
-        setLetterError('请输入开启年龄');
+        setLetterError('Please enter the unlock age');
         return;
       }
       if (typeof newLetterAge === 'number' && newLetterAge <= (stats?.yearsLived || 0)) {
-        setLetterError(`开启年龄必须大于当前年龄 (${Math.floor(stats?.yearsLived || 0)} 岁)`);
+        setLetterError(`Unlock age must be greater than current age (${Math.floor(stats?.yearsLived || 0)})`);
         return;
       }
       if (typeof newLetterAge === 'number' && newLetterAge > MAX_AGE_YEARS) {
-        setLetterError(`开启年龄不能超过 ${MAX_AGE_YEARS} 岁`);
+        setLetterError(`Unlock age cannot exceed ${MAX_AGE_YEARS}`);
         return;
       }
       setPendingLetter({ content: newLetterContent, age: newLetterAge });
     } else {
       if (!newCenturyLetterContent.trim()) {
-        setLetterError('请先写下你想说的话');
+        setLetterError('Please write down what you want to say first');
         return;
       }
       setPendingLetter({ content: newCenturyLetterContent, age: ageIn2100 });
@@ -665,14 +667,14 @@ const App: React.FC = () => {
     const letterId = Date.now().toString();
 
     try {
-      // 增加一点人为延迟，让时空隧道特效更完整
+      // Add a bit of artificial delay for the time tunnel effect
       await new Promise(resolve => setTimeout(resolve, 2200));
 
-      // 计算解锁日期
+      // Calculate unlock date
       const birth = new Date(birthDate);
       const unlockDate = addYears(birth, pendingLetter.age);
       
-      // 保存到 Firestore
+      // Save to Firestore
       const letterData = {
         content: pendingLetter.content,
         unlockAge: pendingLetter.age,
@@ -681,17 +683,17 @@ const App: React.FC = () => {
 
       await addDoc(collection(db, 'users', user.id, 'letters'), letterData);
 
-      // 准备证书数据
+      // Prepare certificate data
       setCertificateData({
         id: letterId.slice(-8).toUpperCase(),
-        sender: user.name || '时空旅者',
+        sender: user.name || 'Time Traveler',
         departureYear: new Date().getFullYear(),
         arrivalYear: unlockDate.getFullYear(),
         arrivalAge: pendingLetter.age,
         isCenturyTraveler: writingLetterType === 'century' || unlockDate.getFullYear() >= 2100
       });
 
-      // 清空输入
+      // Clear input
       if (writingLetterType === 'general') {
         setNewLetterContent('');
         setNewLetterAge('');
@@ -705,23 +707,26 @@ const App: React.FC = () => {
       setIsReminderModalOpen(false);
       setPendingLetter(null);
     } catch (error) {
-      console.error('寄出失败:', error);
+      console.error('Failed to send:', error);
       handleFirestoreError(error, OperationType.CREATE, `users/${user.id}/letters`);
-      alert('寄出失败，请稍后重试');
+      alert('Failed to send, please try again later');
     } finally {
       setIsSubmittingReminder(false);
     }
   };
 
   const removeLetter = async (id: string) => {
+    console.log('Initiating letter removal:', id);
     setLetterToDeleteId(id);
     setIsDeleteConfirmOpen(true);
   };
 
   const confirmDeleteLetter = async () => {
     if (letterToDeleteId && user) {
+      console.log('Confirming letter removal:', letterToDeleteId);
       try {
         await deleteDoc(doc(db, 'users', user.id, 'letters', letterToDeleteId));
+        console.log('Letter removed successfully');
         setLetterToDeleteId(null);
         setIsDeleteConfirmOpen(false);
       } catch (err) {
@@ -738,135 +743,110 @@ const App: React.FC = () => {
       await setDoc(doc(db, 'users', user.id), { name: newName.trim() }, { merge: true });
       
       setUser({ ...user, name: newName.trim() });
-      // 如果证书开着，同步更新证书上的名字
+      // If certificate is open, sync the name on the certificate
       if (certificateData) {
         setCertificateData({ ...certificateData, sender: newName.trim() });
       }
       setIsOnboardingModalOpen(false);
       setIsEditingCertificateName(false);
     } catch (error) {
-      console.error('更新姓名失败:', error);
+      console.error('Failed to update name:', error);
       handleFirestoreError(error, OperationType.UPDATE, `users/${user.id}`);
     } finally {
       setIsUpdatingName(false);
     }
   };
 
-  const handleLogin = async (method: 'phone') => {
-    if (!loginSmsCode || !confirmationResultRef.current) return;
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginEmail || !loginPassword) return;
     setIsLoggingIn(true);
-    
+    setLoginError(null);
     try {
-      const result = await confirmationResultRef.current.confirm(loginSmsCode);
-      const firebaseUser = result.user;
-      
-      // 登录成功后，useEffect 中的 onAuthStateChanged 会处理后续逻辑
+      await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
       setIsLoginModalOpen(false);
-      
+      setLoginEmail('');
+      setLoginPassword('');
     } catch (err: any) {
-      alert(err.message || '登录失败，请检查验证码');
+      console.error('Login failed:', err);
+      let msg = 'Login failed, please check your email and password';
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        msg = 'Invalid email or password';
+      } else if (err.code === 'auth/invalid-email') {
+        msg = 'Invalid email format';
+      } else if (err.code === 'auth/too-many-requests') {
+        msg = 'Too many failed attempts. Please try again later.';
+      }
+      setLoginError(msg);
     } finally {
       setIsLoggingIn(false);
     }
   };
 
-  const formatPhoneNumber = (phone: string) => {
-    let cleaned = phone.replace(/\D/g, '');
-    if (cleaned.startsWith('86') && cleaned.length === 13) {
-      return '+' + cleaned;
-    }
-    if (cleaned.length === 11 && cleaned.startsWith('1')) {
-      return '+86' + cleaned;
-    }
-    if (!phone.startsWith('+')) {
-      // Default to +86 if it looks like a Chinese number but doesn't have the prefix
-      return '+86' + cleaned;
-    }
-    return phone;
-  };
-
-  // 当登录弹窗打开时，初始化 reCAPTCHA
-  useEffect(() => {
-    let timeoutId: any;
-    
-    if (isLoginModalOpen && recaptchaRef.current && !verifierRef.current) {
-      try {
-        verifierRef.current = new RecaptchaVerifier(auth, recaptchaRef.current, {
-          size: 'normal',
-          callback: () => {
-            console.log('Recaptcha resolved');
-            setIsHumanVerified(true);
-          },
-          'expired-callback': () => {
-            console.log('Recaptcha expired');
-            setIsHumanVerified(false);
-          },
-          'error-callback': (error: any) => {
-            console.error('Recaptcha error:', error);
-            setIsHumanVerified(false);
-          }
-        });
-        verifierRef.current.render();
-      } catch (err) {
-        console.error('Failed to initialize reCAPTCHA:', err);
-      }
-    }
-    
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      if (verifierRef.current) {
-        try {
-          verifierRef.current.clear();
-          verifierRef.current = null;
-        } catch (e) {
-          console.error('Error clearing reCAPTCHA:', e);
-        }
-      }
-      setIsHumanVerified(false);
-    };
-  }, [isLoginModalOpen]);
-
-  const sendSmsCode = async () => {
-    if (!loginPhone || !verifierRef.current) {
-      alert('请先完成人机验证');
+  const handleEmailSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginEmail || !loginPassword) return;
+    if (loginPassword.length < 6) {
+      setLoginError('Password must be at least 6 characters');
       return;
     }
-    setIsSendingCode(true);
+    setIsLoggingIn(true);
+    setLoginError(null);
     try {
-      const formattedPhone = formatPhoneNumber(loginPhone);
-      console.log('Sending SMS to:', formattedPhone);
-      
-      const confirmation = await signInWithPhoneNumber(auth, formattedPhone, verifierRef.current);
-      confirmationResultRef.current = confirmation;
-      alert('验证码已发送');
+      await createUserWithEmailAndPassword(auth, loginEmail, loginPassword);
+      setIsLoginModalOpen(false);
+      setLoginEmail('');
+      setLoginPassword('');
     } catch (err: any) {
-      console.error('发送失败:', err);
-      let msg = '发送失败，请检查手机号格式';
-      if (err.code === 'auth/invalid-phone-number') {
-        msg = '手机号格式不正确，请包含国家代码（如 +86）';
-      } else if (err.code === 'auth/too-many-requests') {
-        msg = '请求过于频繁，请稍后再试';
-      } else if (err.code === 'auth/captcha-check-failed') {
-        msg = '验证码校验失败，请重试';
-        setIsHumanVerified(false);
+      console.error('Sign up failed:', err);
+      let msg = 'Sign up failed, please try again';
+      if (err.code === 'auth/email-already-in-use') {
+        msg = 'This email is already registered';
+      } else if (err.code === 'auth/invalid-email') {
+        msg = 'Invalid email format';
+      } else if (err.code === 'auth/weak-password') {
+        msg = 'Password is too weak';
       }
-      alert(`${msg}\n(${err.message || '网络错误'})`);
+      setLoginError(msg);
     } finally {
-      setIsSendingCode(false);
+      setIsLoggingIn(false);
     }
   };
+
+  const handleGoogleLogin = async () => {
+    setIsLoggingIn(true);
+    setLoginError(null);
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      setIsLoginModalOpen(false);
+    } catch (err: any) {
+      console.error('Google login failed:', err);
+      if (err.code !== 'auth/popup-closed-by-user') {
+        setLoginError('Google login failed, please try again');
+      }
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  useEffect(() => {
+    console.log('isLoginModalOpen changed:', isLoginModalOpen);
+  }, [isLoginModalOpen]);
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
       setUser(null);
     } catch (err) {
-      console.error('退出失败:', err);
+      console.error('Logout failed:', err);
     }
   };
 
   useEffect(() => {
-    // 如果已登录，定期同步 birthDate 到后端
+    // If logged in, periodically sync birthDate to backend
     if (user && birthDate) {
       const syncData = async () => {
         try {
@@ -875,7 +855,7 @@ const App: React.FC = () => {
           handleFirestoreError(err, OperationType.UPDATE, `users/${user.id}`);
         }
       };
-      const timer = setTimeout(syncData, 2000); // 防抖
+      const timer = setTimeout(syncData, 2000); // Debounce
       return () => clearTimeout(timer);
     }
   }, [user, birthDate]);
@@ -904,7 +884,7 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-[#FDFCFB] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-stone-200 border-t-stone-800 rounded-full animate-spin" />
-          <p className="text-stone-400 text-sm font-serif italic">正在连接时光隧道...</p>
+          <p className="text-stone-400 text-sm font-serif italic">Connecting to the time tunnel...</p>
         </div>
       </div>
     );
@@ -923,10 +903,10 @@ const App: React.FC = () => {
           {/* Title - Top on Mobile, Left on Desktop */}
           <div className="flex flex-col items-center md:items-start text-center md:text-left">
             <h1 className="text-4xl md:text-5xl font-serif font-light italic text-[#2D2A26] tracking-tight">
-              时光织锦Life
+              LifeGrid
             </h1>
             <p className="text-xs md:text-sm uppercase tracking-[0.2em] text-[#A8A29E] mt-1.5 font-medium">
-              可视化你生命中的每一个篇章
+              Visualize every chapter of your life
             </p>
           </div>
           
@@ -971,7 +951,7 @@ const App: React.FC = () => {
                             className="w-full flex items-center gap-2 px-4 py-2 text-xs font-medium text-stone-600 hover:bg-stone-50 transition-all border-b border-stone-50"
                           >
                             <Award size={14} />
-                            我的证书 ({allCertificates.length})
+                            My Certificates ({allCertificates.length})
                           </button>
                         )}
                         <button 
@@ -982,7 +962,7 @@ const App: React.FC = () => {
                           className="w-full flex items-center gap-2 px-4 py-2 text-xs font-medium text-red-500 hover:bg-red-50 transition-all"
                         >
                           <LogOut size={14} />
-                          退出登录
+                          Logout
                         </button>
                       </div>
                     </>
@@ -990,11 +970,14 @@ const App: React.FC = () => {
                 </div>
               ) : (
                 <button 
-                  onClick={() => setIsLoginModalOpen(true)}
+                  onClick={() => {
+                    console.log('Opening login modal...');
+                    setIsLoginModalOpen(true);
+                  }}
                   className="flex items-center gap-2 px-4 h-[38px] bg-[#2D2A26] text-white rounded-2xl hover:bg-[#45403B] transition-all shadow-md active:scale-95 text-xs font-bold"
                 >
-                  <Smartphone size={14} />
-                  手机登录
+                  <LogIn size={14} />
+                  Login
                 </button>
               )}
             </div>
@@ -1016,14 +999,14 @@ const App: React.FC = () => {
                 <Hourglass size={64} className="relative text-[#D97706] mx-auto opacity-80" />
               </div>
               <h2 className="text-5xl font-serif font-light text-[#2D2A26] mb-6">
-                每一刻都是一份礼物
+                Every moment is a gift
               </h2>
               <p className="text-lg text-[#78716C] font-light leading-relaxed mb-8">
-                你的生命是以月为单位书写的独特故事。<br/>
-                输入你的出生日期，看看你已经填满的画布，以及等待你创作的未来空间。
+                Your life is a unique story written in months.<br/>
+                Enter your birth date to see the canvas you've filled and the future space waiting for your creation.
               </p>
               <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-[#A8A29E] border-t border-[#E7E5E4] pt-6">
-                <span>请在上方选择你的起点</span>
+                <span>Please select your starting point above</span>
               </div>
             </motion.div>
           </div>
@@ -1032,25 +1015,25 @@ const App: React.FC = () => {
             {/* Stats Dashboard - Elegant Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 shrink-0">
               <MiniStatCard 
-                title="已历经的天数" 
+                title="Days Lived" 
                 value={stats?.daysLived.toLocaleString()} 
                 icon={<Sun size={14} />}
                 color="text-[#57534E]" 
               />
               <MiniStatCard 
-                title="已走过的岁序" 
+                title="Years Passed" 
                 value={stats?.yearsLived} 
                 icon={<Compass size={14} />}
                 color="text-[#57534E]" 
               />
               <MiniStatCard 
-                title="生命进度" 
+                title="Life Progress" 
                 value={`${stats?.percentLived.toFixed(1)}%`} 
                 icon={<Sparkles size={14} />}
                 color="text-[#57534E]" 
               />
               <MiniStatCard 
-                title="未来的季节" 
+                title="Future Seasons" 
                 value={(TOTAL_MONTHS - (stats?.monthsLived || 0)).toLocaleString()} 
                 icon={<Moon size={14} />}
                 color="text-[#57534E]" 
@@ -1069,14 +1052,14 @@ const App: React.FC = () => {
                 
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 shrink-0 gap-4">
                   <div>
-                    <h3 className="text-2xl font-serif font-semibold text-[#2D2A26]">生命画布</h3>
-                    <p className="text-xs text-[#A8A29E] uppercase tracking-widest mt-1 font-bold">百岁人生 (1,200 个月)</p>
+                    <h3 className="text-2xl font-serif font-semibold text-[#2D2A26]">Life Canvas</h3>
+                    <p className="text-xs text-[#A8A29E] uppercase tracking-widest mt-1 font-bold">100-Year Life (1,200 Months)</p>
                   </div>
-                  <div className="flex flex-wrap gap-6 text-[11px] font-bold uppercase tracking-wider">
-                    <LegendItem color="bg-[#57534E]" label="过去" />
-                    <LegendItem color="bg-[#F43F5E]" label="愿望" />
-                    <LegendItem color="bg-[#10B981]" label="达成" />
-                    <LegendItem color="bg-[#F5F5F4] border border-[#E7E5E4]" label="未来" />
+                  <div className="flex flex-wrap justify-center gap-6 text-[11px] font-bold uppercase tracking-wider">
+                    <LegendItem color="bg-[#57534E]" label="Past" />
+                    <LegendItem color="bg-[#F43F5E]" label="Goals" />
+                    <LegendItem color="bg-[#10B981]" label="Achieved" />
+                    <LegendItem color="bg-[#F5F5F4] border border-[#E7E5E4]" label="Future" />
                   </div>
                 </div>
 
@@ -1108,8 +1091,8 @@ const App: React.FC = () => {
                             }
                           `}
                           title={isGoal 
-                            ? `目标: ${monthGoals.map(g => g.title).join(', ')} (年龄 ${Math.floor(idx/12)})${isCompleted ? ' - 已达成' : ''}`
-                            : `第 ${idx + 1} 个月 (${Math.floor(idx/12)} 岁)`
+                            ? `Goal: ${monthGoals.map(g => g.title).join(', ')} (Age ${Math.floor(idx/12)})${isCompleted ? ' - Achieved' : ''}`
+                            : `Month ${idx + 1} (Age ${Math.floor(idx/12)})`
                           }
                         />
                       );
@@ -1118,8 +1101,8 @@ const App: React.FC = () => {
                 </div>
                 
                 <div className="mt-8 pt-6 border-t border-[#F5F5F4] flex justify-between text-[11px] uppercase tracking-[0.2em] font-bold text-[#A8A29E] shrink-0">
-                  <span>黎明: {format(new Date(birthDate), 'yyyy年MM月')}</span>
-                  <span>夕阳: {format(addYears(new Date(birthDate), 100), 'yyyy年')}</span>
+                  <span>Dawn: {format(new Date(birthDate), 'MMM yyyy')}</span>
+                  <span>Sunset: {format(addYears(new Date(birthDate), 100), 'yyyy')}</span>
                 </div>
               </motion.div>
 
@@ -1135,14 +1118,14 @@ const App: React.FC = () => {
                     <div className="p-2 bg-[#FEF2F2] rounded-xl text-[#F43F5E]">
                       <Target size={20} />
                     </div>
-                    <h3 className="text-xl font-serif font-bold text-[#2D2A26]">人生愿望清单</h3>
+                    <h3 className="text-xl font-serif font-bold text-[#2D2A26]">Life Wishlist</h3>
                   </div>
 
                   <div className="flex flex-col gap-4 mb-8 shrink-0">
                     <div className="space-y-3">
                       <input 
                         type="text" 
-                        placeholder="你的下一个梦想是什么？"
+                        placeholder="What is your next dream?"
                         className="w-full px-4 py-3 bg-[#FAFAF9] border border-[#E7E5E4] rounded-2xl text-sm focus:ring-2 focus:ring-[#F43F5E]/20 focus:border-[#F43F5E] outline-none transition-all placeholder-[#A8A29E] font-medium"
                         value={newGoalTitle}
                         onChange={(e) => {
@@ -1153,7 +1136,7 @@ const App: React.FC = () => {
                       <div className="flex flex-col sm:flex-row gap-3">
                         <input 
                           type="number" 
-                          placeholder="预期年龄"
+                          placeholder="Target Age"
                           className="w-full sm:flex-1 px-4 py-3 bg-[#FAFAF9] border border-[#E7E5E4] rounded-2xl text-sm focus:ring-2 focus:ring-[#F43F5E]/20 focus:border-[#F43F5E] outline-none transition-all placeholder-[#A8A29E] font-medium"
                           value={newGoalAge}
                           onChange={(e) => {
@@ -1183,7 +1166,7 @@ const App: React.FC = () => {
                   <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar max-h-[300px]">
                     <AnimatePresence initial={false}>
                       <div className="flex flex-col gap-4">
-                        {goals.sort((a, b) => a.age - b.age).map(goal => (
+                        {[...goals].sort((a, b) => a.age - b.age).map(goal => (
                           <motion.div 
                             key={goal.id}
                             initial={{ opacity: 0, height: 0 }}
@@ -1208,12 +1191,12 @@ const App: React.FC = () => {
                                 <span className={`text-sm font-bold transition-all ${goal.completed ? 'text-[#A8A29E] line-through' : 'text-[#44403C]'}`}>
                                   {goal.title}
                                 </span>
-                                <span className="text-[10px] font-black text-[#A8A29E] uppercase tracking-widest mt-0.5">年龄 {goal.age}</span>
+                                <span className="text-[10px] font-black text-[#A8A29E] uppercase tracking-widest mt-0.5">Age {goal.age}</span>
                               </div>
                             </div>
                             <button 
                               onClick={() => removeGoal(goal.id)}
-                              className="p-2 text-[#D6D3D1] hover:text-[#F43F5E] transition-colors opacity-0 group-hover:opacity-100"
+                              className="p-2 text-[#D6D3D1] hover:text-[#F43F5E] transition-colors opacity-40 md:opacity-0 group-hover:opacity-100"
                             >
                               <Trash2 size={16} />
                             </button>
@@ -1221,7 +1204,7 @@ const App: React.FC = () => {
                         ))}
                         {goals.length === 0 && (
                           <div className="text-center py-12">
-                            <p className="text-[#A8A29E] text-sm font-serif italic">未来是一张白纸...</p>
+                            <p className="text-[#A8A29E] text-sm font-serif italic">The future is a blank page...</p>
                           </div>
                         )}
                       </div>
@@ -1242,7 +1225,7 @@ const App: React.FC = () => {
                       <div className="p-2 bg-amber-50 rounded-xl text-amber-600">
                         <Mail size={20} />
                       </div>
-                      <h3 className="text-xl font-serif font-bold text-[#2D2A26]">时光信囊</h3>
+                      <h3 className="text-xl font-serif font-bold text-[#2D2A26]">Time Capsule</h3>
                     </div>
                     <button 
                       onClick={() => {
@@ -1255,7 +1238,7 @@ const App: React.FC = () => {
                       className="flex items-center gap-1.5 text-xs font-bold text-amber-600 uppercase tracking-widest hover:text-amber-700 transition-colors"
                     >
                       {!isWritingLetter && <Feather size={12} />}
-                      {isWritingLetter ? '取消' : '写一封信'}
+                      {isWritingLetter ? 'Cancel' : 'Write a Letter'}
                     </button>
                   </div>
 
@@ -1271,7 +1254,7 @@ const App: React.FC = () => {
                       >
                         <div className="flex justify-between items-center mb-2">
                           <p className="text-[10px] font-bold text-amber-600/60 uppercase tracking-widest">
-                            {writingLetterType === 'general' ? '写给未来的信' : '跨世纪信囊'}
+                            {writingLetterType === 'general' ? 'Letter to the Future' : 'Century Capsule'}
                           </p>
                           <button 
                             onClick={() => {
@@ -1286,11 +1269,11 @@ const App: React.FC = () => {
                             className="flex items-center gap-1 text-[10px] font-bold text-stone-400 hover:text-amber-600 transition-colors uppercase tracking-widest"
                           >
                             <Sparkles size={10} />
-                            {currentInspiration ? '换一个' : '获取灵感'}
+                            {currentInspiration ? 'Change' : 'Get Inspiration'}
                           </button>
                         </div>
                         <textarea 
-                          placeholder={currentInspiration || (writingLetterType === 'general' ? "写给未来的自己..." : "写给新世纪的自己...")}
+                          placeholder={currentInspiration || (writingLetterType === 'general' ? "Write to your future self..." : "Write to your new century self...")}
                           className="w-full h-32 px-4 py-3 bg-[#FAFAF9] border border-[#E7E5E4] rounded-2xl text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all placeholder-[#A8A29E] font-medium resize-none"
                           value={writingLetterType === 'general' ? newLetterContent : newCenturyLetterContent}
                           onChange={(e) => {
@@ -1305,7 +1288,7 @@ const App: React.FC = () => {
                         <div className="flex flex-col sm:flex-row gap-3">
                           <input 
                             type="number" 
-                            placeholder="开启年龄 (如: 40)"
+                            placeholder="Unlock Age (e.g., 40)"
                             className={`w-full sm:flex-1 px-4 py-3 bg-[#FAFAF9] border border-[#E7E5E4] rounded-2xl text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all placeholder-[#A8A29E] font-medium ${writingLetterType === 'century' ? 'opacity-50 cursor-not-allowed' : ''}`}
                             value={writingLetterType === 'general' ? newLetterAge : ageIn2100}
                             disabled={writingLetterType === 'century'}
@@ -1321,7 +1304,7 @@ const App: React.FC = () => {
                             className="w-full sm:w-auto px-6 py-3 bg-amber-600 text-white rounded-2xl hover:bg-amber-700 transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
                           >
                             <Send size={18} />
-                            <span className="text-sm font-bold">寄出</span>
+                            <span className="text-sm font-bold">Send</span>
                           </button>
                         </div>
                         {letterError && (
@@ -1358,15 +1341,15 @@ const App: React.FC = () => {
                                     <Sparkles size={24} />
                                   </div>
                                   <p className="text-amber-800/90 text-[13px] font-medium italic leading-relaxed tracking-wide">
-                                    你有机会见证 22 世纪的曙光，给 2100 年的自己写封信吧
+                                    You have a chance to witness the dawn of the 22nd century. Write a letter to your 2100 self.
                                   </p>
                                 </motion.div>
                               ) : (
-                                <p className="text-[#A8A29E] text-sm font-serif italic">还没有寄给未来的信...</p>
+                                <p className="text-[#A8A29E] text-sm font-serif italic">No letters to the future yet...</p>
                               )}
                             </div>
                           ) : (
-                            letters.sort((a, b) => a.unlockAge - b.unlockAge).map(letter => {
+                            [...letters].sort((a, b) => a.unlockAge - b.unlockAge).map(letter => {
                               const isUnlocked = (stats?.yearsLived || 0) >= letter.unlockAge;
                               return (
                                 <div key={letter.id} className="p-4 bg-[#FAFAF9] rounded-[1.5rem] border border-[#F5F5F4] group hover:border-[#E7E5E4] transition-all">
@@ -1374,12 +1357,12 @@ const App: React.FC = () => {
                                     <div className="flex items-center gap-2">
                                       {isUnlocked ? <Unlock size={14} className="text-emerald-500" /> : <Lock size={14} className="text-amber-500" />}
                                       <span className="text-[10px] font-black text-[#A8A29E] uppercase tracking-widest">
-                                        {letter.unlockAge} 岁开启
+                                        Unlock at Age {letter.unlockAge}
                                       </span>
                                     </div>
                                     <button 
                                       onClick={() => removeLetter(letter.id)}
-                                      className="p-1 text-[#D6D3D1] hover:text-[#F43F5E] transition-colors opacity-0 group-hover:opacity-100"
+                                      className="p-1 text-[#D6D3D1] hover:text-[#F43F5E] transition-colors opacity-40 md:opacity-0 group-hover:opacity-100"
                                     >
                                       <Trash2 size={14} />
                                     </button>
@@ -1388,7 +1371,7 @@ const App: React.FC = () => {
                                     <p className="text-sm text-[#44403C] leading-relaxed italic">"{letter.content}"</p>
                                   ) : (
                                     <div className="h-12 flex items-center justify-center bg-stone-100/50 rounded-xl border border-dashed border-stone-200">
-                                      <span className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">内容已加密</span>
+                                      <span className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">Content Encrypted</span>
                                     </div>
                                   )}
                                 </div>
@@ -1410,7 +1393,7 @@ const App: React.FC = () => {
       {/* Simple Footer - Poetic */}
       <footer className="py-6 text-center bg-transparent shrink-0">
         <p className="text-[13px] font-serif italic text-[#A8A29E] tracking-wide">
-          "你的生命是唯一值得书写的故事。请用心去写。"
+          "Your life is the only story worth writing. Please write it with heart."
         </p>
       </footer>
 
@@ -1453,9 +1436,9 @@ const App: React.FC = () => {
                 <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 mb-6">
                   <Clock size={32} />
                 </div>
-                <h3 className="text-2xl font-serif font-bold text-stone-800 mb-3">开启未来提醒</h3>
+                <h3 className="text-2xl font-serif font-bold text-stone-800 mb-3">Enable Future Reminder</h3>
                 <p className="text-stone-500 text-sm leading-relaxed mb-6">
-                  时光荏苒，我们担心您会忘记这封信。当信囊在 <span className="font-bold text-emerald-600">{pendingLetter?.age} 岁</span> 解锁时，我们会第一时间短信通知您。
+                  Time flies, and we worry you might forget this letter. When the capsule unlocks at <span className="font-bold text-emerald-600">Age {pendingLetter?.age}</span>, we will notify you via SMS immediately.
                 </p>
 
                 <div className="w-full space-y-4">
@@ -1464,8 +1447,8 @@ const App: React.FC = () => {
                       <Smartphone size={32} />
                     </div>
                     <p className="text-[11px] text-emerald-700 font-medium text-center">
-                      提醒号码: <span className="font-bold">{user?.phone}</span><br/>
-                      手机号是跨越时光最稳定的联系方式。
+                      Reminder Number: <span className="font-bold">{user?.phone}</span><br/>
+                      Phone number is the most stable way to connect across time.
                     </p>
                   </div>
                   
@@ -1475,14 +1458,14 @@ const App: React.FC = () => {
                       onClick={confirmLetter}
                       className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                      {isSubmittingReminder ? '正在寄出...' : '确认寄出'}
+                      {isSubmittingReminder ? 'Sending...' : 'Confirm Send'}
                     </button>
                     <button 
                       disabled={isSubmittingReminder}
                       onClick={() => setIsReminderModalOpen(false)}
                       className="w-full py-4 bg-transparent text-stone-400 rounded-2xl font-bold hover:text-stone-600 transition-all"
                     >
-                      返回修改
+                      Go Back
                     </button>
                   </div>
                 </div>
@@ -1547,75 +1530,72 @@ const App: React.FC = () => {
                       setCurrentCertificateIndex(prev => (prev < allCertificates.length - 1 ? prev + 1 : 0));
                     }
                   }}
-                  className="w-full"
+                  className="w-full flex justify-center"
                 >
                   {/* The Certificate Card */}
                   <div 
                     ref={certificateRef}
                     className={`
-                    p-1 rounded-sm shadow-2xl border-[8px] md:border-[12px] relative overflow-hidden transition-all duration-1000
+                    p-2 md:p-3 rounded-sm shadow-2xl border-[8px] md:border-[12px] relative overflow-hidden transition-all duration-1000
+                    w-[300px] sm:w-[340px] md:w-[480px] mx-auto box-border
                     ${allCertificates[currentCertificateIndex].isCenturyTraveler 
-                      ? 'bg-[#020617] border-[#1e293b] ring-1 ring-[rgba(96,165,250,0.2)]' 
+                      ? 'bg-[#020617] border-[#1e293b]' 
                       : 'bg-[#F5F2ED] border-white'
                     }
                   `}>
+                    {/* Inner Border/Glow for Century Traveler - Using a div instead of ring for more consistent capture */}
+                    {allCertificates[currentCertificateIndex].isCenturyTraveler && (
+                      <div className="absolute inset-[6px] md:inset-[8px] border border-[rgba(96,165,250,0.2)] pointer-events-none z-10" />
+                    )}
                     {/* Decorative Inner Border */}
                     <div className={`
-                      border pt-12 pb-6 px-6 md:p-12 flex flex-col items-center text-center relative transition-colors duration-1000
+                      border pt-[62px] pb-[46px] px-4 md:pt-[88px] md:pb-[68px] md:px-6 flex flex-col items-center text-center relative transition-colors duration-1000 w-full h-full box-border
                       ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'border-[rgba(59,130,246,0.2)]' : 'border-stone-300'}
                     `}>
                         
                         {/* Background Watermark */}
                         <div className={`
                           absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-1000
-                          ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'opacity-[0.07] text-blue-300' : 'opacity-[0.03] text-stone-800'}
+                          ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'opacity-[0.07] text-[#93c5fd]' : 'opacity-[0.03] text-[#292524]'}
                         `}>
-                          <Hourglass size={240} className="md:w-[300px] md:h-[300px]" />
+                          <Hourglass size={240} className="md:w-[340px] md:h-[340px]" />
                         </div>
 
                         {/* Century Traveler Special Effects */}
                         {allCertificates[currentCertificateIndex].isCenturyTraveler && (
                           <>
-                            {/* Humanistic Texture Overlay - Space Parchment Feel */}
-                            <div 
-                              className="absolute inset-0 opacity-60 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/pinstriped-suit.png')]" 
-                              style={{ backgroundSize: '16px 16px' }}
-                            />
-                            
                             {/* Refined Top Glow - Slightly darker and more contained */}
                             <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_0%,rgba(30,64,175,0.35)_0%,rgba(37,99,235,0.1)_30%,transparent_60%)] pointer-events-none" />
                             
-                            {/* Corner Decorative Elements - Like antique book corners but futuristic */}
-                            <div className="absolute top-2 left-2 w-8 h-8 border-t border-l border-[rgba(96,165,250,0.3)] rounded-tl-sm pointer-events-none" />
-                            <div className="absolute top-2 right-2 w-8 h-8 border-t border-r border-[rgba(96,165,250,0.3)] rounded-tr-sm pointer-events-none" />
-                            <div className="absolute bottom-2 left-2 w-8 h-8 border-b border-l border-[rgba(96,165,250,0.3)] rounded-bl-sm pointer-events-none" />
-                            <div className="absolute bottom-2 right-2 w-8 h-8 border-b border-r border-[rgba(96,165,250,0.3)] rounded-br-sm pointer-events-none" />
+                            {/* Corner Decorative Elements - Using fixed pixel offsets for absolute stability */}
+                            <div className="absolute top-[6px] left-[6px] w-8 h-8 border-t border-l border-[rgba(96,165,250,0.3)] rounded-tl-sm pointer-events-none z-30" />
+                            <div className="absolute top-[6px] right-[6px] w-8 h-8 border-t border-r border-[rgba(96,165,250,0.3)] rounded-tr-sm pointer-events-none z-30" />
+                            <div className="absolute bottom-[6px] left-[6px] w-8 h-8 border-b border-l border-[rgba(96,165,250,0.3)] rounded-bl-sm pointer-events-none z-30" />
+                            <div className="absolute bottom-[6px] right-[6px] w-8 h-8 border-b border-r border-[rgba(96,165,250,0.3)] rounded-br-sm pointer-events-none z-30" />
 
-                            <div className="absolute top-3 right-3 md:top-6 md:right-6">
+                            <div className="absolute top-3 left-1/2 -translate-x-1/2 md:top-6">
                               <motion.div 
                                 initial={{ opacity: 0, scale: 0.5 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 className="bg-gradient-to-r from-[rgba(37,99,235,0.2)] to-[rgba(79,70,229,0.2)] border border-[rgba(96,165,250,0.4)] px-2 py-0.5 md:px-3 md:py-1 rounded-full flex items-center gap-1 md:gap-1.5 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
                               >
-                                <Sparkles size={12} className="text-blue-300" />
-                                <span className="text-[8px] md:text-[10px] font-bold text-blue-200 uppercase tracking-[0.2em]">22世纪见证者</span>
+                                <Sparkles size={12} className="text-[#93c5fd]" />
+                                <span className="text-[8px] md:text-[10px] font-bold text-[#bfdbfe] uppercase tracking-[0.2em]">22nd Century Witness</span>
                               </motion.div>
                             </div>
                           </>
                         )}
 
                         {/* Header */}
-                        <div className="mb-4 md:mb-8">
-                          <div className={`flex justify-center mb-2 md:mb-4 transition-colors duration-1000 ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[#60a5fa]' : 'text-[#292524]'}`}>
-                            <Award size={40} className="md:w-12 md:h-12" strokeWidth={1} />
+                        <div className="mb-2 md:mb-8 w-full overflow-hidden">
+                          <div className={`flex justify-center mb-1 md:mb-4 transition-colors duration-1000 ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[#60a5fa]' : 'text-[#292524]'}`}>
+                            <Award size={isMobile ? 32 : 44} className="md:w-11 md:h-11" strokeWidth={1} />
                           </div>
                           <h2 className={`
-                            text-2xl md:text-4xl font-serif font-light tracking-[0.2em] uppercase mb-1 md:mb-2 transition-colors duration-1000 max-w-[390px] w-full mx-auto leading-tight
-                            ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-blue-50 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'text-[#292524]'}
+                            text-[11px] sm:text-sm md:text-xl lg:text-2xl font-serif font-light tracking-[0.1em] md:tracking-[0.2em] uppercase mb-1 md:mb-2 transition-colors duration-1000 w-full mx-auto leading-tight max-w-none
+                            ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[#eff6ff] drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'text-[#292524]'}
                           `}>
-                            {allCertificates[currentCertificateIndex].isCenturyTraveler ? (
-                              <>跨世纪<br />时光守护证书</>
-                            ) : '时光守护证书'}
+                            {allCertificates[currentCertificateIndex].isCenturyTraveler ? 'Century Traveler Time Guardian Certificate' : 'Time Guardian Certificate'}
                           </h2>
                           <div className={`h-[1px] w-20 md:w-24 mx-auto mb-1 transition-colors duration-1000 ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'bg-[rgba(59,130,246,0.5)]' : 'bg-[#a8a29e]'}`}></div>
                           <p className={`
@@ -1627,7 +1607,7 @@ const App: React.FC = () => {
                         </div>
 
                         {/* Content */}
-                        <div className="space-y-4 md:space-y-6 mb-6 md:mb-10 relative z-10">
+                        <div className="space-y-3 md:space-y-4 mb-4 md:mb-8 relative z-10">
                           <div>
                             {isEditingCertificateName ? (
                               <div className="flex flex-col items-center gap-2">
@@ -1635,7 +1615,7 @@ const App: React.FC = () => {
                                   autoFocus
                                   type="text"
                                   className={`
-                                    text-xl md:text-2xl font-bold border-b outline-none text-center px-2 py-1 w-40 md:w-48 transition-all
+                                    text-base md:text-2xl font-bold border-b outline-none text-center px-2 py-1 w-36 md:w-48 transition-all
                                     ${allCertificates[currentCertificateIndex].isCenturyTraveler 
                                       ? 'text-white bg-[rgba(30,58,138,0.2)] border-[rgba(59,130,246,0.5)]' 
                                       : 'text-stone-800 bg-white/50 border-stone-400'
@@ -1656,7 +1636,7 @@ const App: React.FC = () => {
                                     }
                                   }}
                                 />
-                                <p className="text-[8px] md:text-[9px] text-stone-400 uppercase tracking-widest font-bold">按回车确认修改</p>
+                                <p className="text-[8px] md:text-[9px] text-stone-400 uppercase tracking-widest font-bold">Press Enter to Confirm</p>
                               </div>
                             ) : (
                               <div 
@@ -1667,7 +1647,7 @@ const App: React.FC = () => {
                                 }}
                               >
                                 <h3 className={`
-                                  text-xl md:text-2xl font-bold mb-1 transition-colors duration-1000
+                                  text-base md:text-2xl font-bold mb-1 transition-colors duration-1000 whitespace-nowrap tracking-tight md:tracking-normal
                                   ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[#dbeafe]' : 'text-[#292524]'}
                                 `}>
                                   {allCertificates[currentCertificateIndex].sender}
@@ -1680,47 +1660,42 @@ const App: React.FC = () => {
                             )}
                           </div>
 
-                          <p className={`leading-relaxed max-w-xs mx-auto text-xs md:text-sm transition-colors duration-1000 ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[rgba(219,234,254,0.8)]' : 'text-[#57534e]'}`}>
-                            于 <span className={`font-bold ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[#60a5fa]' : 'text-[#1c1917]'}`}>{allCertificates[currentCertificateIndex].departureYear}年</span> 寄出一份跨越时空的托付。
+                          <p className={`leading-relaxed max-w-none mx-auto text-xs md:text-sm transition-colors duration-1000 ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[rgba(219,234,254,0.8)]' : 'text-[#57534e]'}`}>
+                            Sent a commitment across time and space in <span className={`font-bold ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[#60a5fa]' : 'text-[#1c1917]'}`}>{allCertificates[currentCertificateIndex].departureYear}</span>.
                             {allCertificates[currentCertificateIndex].isCenturyTraveler ? (
-                              <>此信囊已进入<span className="text-[#60a5fa] font-bold">跨世纪航道</span>，将于 <span className="text-[#60a5fa] font-bold">{allCertificates[currentCertificateIndex].arrivalYear}年</span> 精准启封。</>
+                              <>This capsule has entered the <span className="text-[#60a5fa] font-bold">Century Route</span> and will be precisely opened in <span className="text-[#60a5fa] font-bold">{allCertificates[currentCertificateIndex].arrivalYear}</span>.</>
                             ) : (
-                              <>此信囊已进入永恒轨道，将于 <span className="text-[#1c1917] font-bold">{allCertificates[currentCertificateIndex].arrivalYear}年</span> 精准启封。</>
+                              <>This capsule has entered the eternal orbit and will be precisely opened in <span className="text-[#1c1917] font-bold">{allCertificates[currentCertificateIndex].arrivalYear}</span>.</>
                             )}
                           </p>
 
                           <p className={`italic text-[10px] md:text-xs transition-colors duration-1000 ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[rgba(96,165,250,0.6)]' : 'text-[#78716c]'}`}>
-                            {allCertificates[currentCertificateIndex].isCenturyTraveler ? '"跨越世纪的曙光，只为遇见未来的你。"' : '"时光会变，但承诺的温度永恒。"'}
+                            {allCertificates[currentCertificateIndex].isCenturyTraveler ? '"The dawn across the century, only to meet your future self."' : '"Time changes, but the warmth of commitment is eternal."'}
                           </p>
                         </div>
 
                         {/* Footer / Seal & QR Code */}
-                        <div className="w-full relative flex justify-between items-center mt-2 md:mt-4 min-h-[80px] md:min-h-[120px]">
+                        <div className="w-full relative flex justify-between items-center mt-1 md:mt-2 min-h-[60px] md:min-h-[90px]">
                           <div className="text-left relative flex items-center">
                             {/* QR Code for sharing */}
                             <div className={`
-                              p-1.5 rounded-lg bg-white shadow-sm transition-all duration-1000
+                              p-1 rounded-lg bg-white shadow-sm transition-all duration-1000
                               ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'ring-1 ring-[rgba(59,130,246,0.5)]' : ''}
                             `}>
                               <QRCodeSVG 
                                 value={window.location.href} 
-                                size={isMobile ? 48 : 64}
+                                size={isMobile ? 40 : 64}
                                 level="L"
                                 includeMargin={false}
                                 fgColor={allCertificates[currentCertificateIndex].isCenturyTraveler ? "#1E293B" : "#2D2A26"}
                               />
                             </div>
-
-                            {/* QR Label - Positioned below the QR code box */}
-                            <p className={`absolute top-[calc(100%+8px)] md:top-[calc(100%+12px)] left-0 whitespace-nowrap text-[7px] md:text-[8px] font-bold uppercase tracking-widest ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[rgba(96,165,250,0.6)]' : 'text-[#a8a29e]'}`}>
-                              扫码开启时光之旅
-                            </p>
                           </div>
 
                           {/* Absolutely Centered Wax Seal */}
                           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 group/seal">
                             {/* Realistic Wax Seal */}
-                            <div className="w-16 h-16 md:w-24 md:h-24 relative">
+                            <div className="w-12 h-12 md:w-20 md:h-20 relative">
                               {/* The outer irregular wax pool - organic shape */}
                               <div className={`
                                 absolute inset-0 rounded-[45%_55%_50%_50%/50%_45%_55%_50%] shadow-[inset_-2px_-2px_4px_rgba(0,0,0,0.4),inset_2px_2px_4px_rgba(255,255,255,0.2),4px_4px_12px_rgba(0,0,0,0.4)] transition-colors duration-1000
@@ -1783,19 +1758,19 @@ const App: React.FC = () => {
                               {/* Realistic Surface Highlight */}
                               <div className="absolute top-[10%] left-[10%] w-[40%] h-[40%] bg-gradient-to-br from-[rgba(255,255,255,0.2)] to-transparent rounded-full blur-lg pointer-events-none"></div>
                             </div>
-                            <p className={`absolute -bottom-5 md:bottom-[-28px] left-1/2 -translate-x-1/2 whitespace-nowrap text-[8px] md:text-[10px] font-bold tracking-[0.2em] uppercase transition-colors duration-1000 ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[rgba(96,165,250,0.7)]' : 'text-[#a8a29e]'}`}>
-                              时光邮局 · 年轮
+                            <p className={`absolute -bottom-5 md:bottom-[-22px] left-1/2 -translate-x-1/2 whitespace-nowrap text-[8px] md:text-[10px] font-bold tracking-[0.2em] uppercase transition-colors duration-1000 ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[rgba(96,165,250,0.7)]' : 'text-[#a8a29e]'}`}>
+                              Time Post · Rings
                             </p>
                           </div>
 
-                          <div className="text-right flex flex-col gap-3 md:gap-4">
+                          <div className="text-right flex flex-col gap-3 md:gap-4 min-w-[120px]">
                             <div>
-                              <p className="text-[8px] md:text-[9px] text-[#a8a29e] uppercase tracking-widest font-bold mb-0.5 md:mb-1">证书编号</p>
-                              <p className={`text-[10px] md:text-xs font-mono transition-colors duration-1000 ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[rgba(147,197,253,0.7)]' : 'text-[#57534e]'}`}>{allCertificates[currentCertificateIndex].id}</p>
+                              <p className="text-[8px] md:text-[9px] text-[#a8a29e] uppercase tracking-widest font-bold mb-0.5 md:mb-1 whitespace-nowrap">Certificate ID</p>
+                              <p className={`text-[10px] md:text-xs font-mono transition-colors duration-1000 whitespace-nowrap ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[rgba(147,197,253,0.7)]' : 'text-[#57534e]'}`}>{allCertificates[currentCertificateIndex].id}</p>
                             </div>
                             <div>
-                              <p className="text-[8px] md:text-[9px] text-[#a8a29e] uppercase tracking-widest font-bold mb-0.5 md:mb-1">签发日期</p>
-                              <p className={`text-[10px] md:text-xs font-medium italic transition-colors duration-1000 ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[rgba(147,197,253,0.7)]' : 'text-[#57534e]'}`}>{format(allCertificates[currentCertificateIndex].date, 'yyyy.MM.dd')}</p>
+                              <p className="text-[8px] md:text-[9px] text-[#a8a29e] uppercase tracking-widest font-bold mb-0.5 md:mb-1 whitespace-nowrap">Issue Date</p>
+                              <p className={`text-[10px] md:text-xs font-medium italic transition-colors duration-1000 whitespace-nowrap ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[rgba(147,197,253,0.7)]' : 'text-[#57534e]'}`}>{format(allCertificates[currentCertificateIndex].date, 'yyyy.MM.dd')}</p>
                             </div>
                           </div>
                         </div>
@@ -1811,7 +1786,7 @@ const App: React.FC = () => {
                     <button
                       key={idx}
                       onClick={() => setCurrentCertificateIndex(idx)}
-                      className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === currentCertificateIndex ? 'bg-stone-800 w-4' : 'bg-stone-300 hover:bg-stone-400'}`}
+                      className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === currentCertificateIndex ? 'bg-[#292524] w-4' : 'bg-[#d6d3d1] hover:bg-[#a8a29e]'}`}
                     />
                   ))}
                 </div>
@@ -1824,7 +1799,7 @@ const App: React.FC = () => {
                   className="px-8 py-3 bg-[rgba(245,245,244,0.8)] hover:bg-[rgba(231,229,228,0.8)] backdrop-blur-md text-stone-500 rounded-full text-sm font-bold transition-all border border-[rgba(231,229,228,0.5)] flex items-center gap-2"
                 >
                   <X size={16} />
-                  关闭
+                  Close
                 </button>
                 <button 
                   onClick={handleDownloadCertificate}
@@ -1836,7 +1811,9 @@ const App: React.FC = () => {
                   ) : (
                     <Download size={16} />
                   )}
-                  {isDownloading ? '正在生成...' : '保存证书'}
+                  <span className="whitespace-nowrap">
+                    {isDownloading ? 'Saving...' : 'Save Certificate'}
+                  </span>
                 </button>
               </div>
             </>
@@ -1867,17 +1844,17 @@ const App: React.FC = () => {
                   <Award size={40} strokeWidth={1} />
                 </div>
                 
-                <h3 className="text-2xl font-bold text-stone-800 mb-4 tracking-tight">欢迎来到时光织锦</h3>
+                <h3 className="text-2xl font-bold text-stone-800 mb-4 tracking-tight">Welcome to LifeGrid</h3>
                 
                 <p className="text-stone-600 text-sm leading-relaxed mb-8 italic">
-                  “守护者，请问该如何称呼您？<br />这个名字将被镌刻在您的时光证书上。”
+                  “Guardian, how should we address you?<br />This name will be engraved on your Time Certificate.”
                 </p>
 
                 <div className="w-full space-y-6">
                   <div className="relative">
                     <input 
                       type="text" 
-                      placeholder="您的姓名或昵称"
+                      placeholder="Your name or nickname"
                       className="w-full px-6 py-4 bg-white border border-stone-200 rounded-2xl text-lg font-medium focus:ring-4 focus:ring-stone-800/5 focus:border-stone-800 outline-none transition-all text-center"
                       value={onboardingName}
                       onChange={(e) => setOnboardingName(e.target.value)}
@@ -1895,7 +1872,7 @@ const App: React.FC = () => {
                     ) : (
                       <>
                         <Check size={18} />
-                        开启守护之旅
+                        Start Guardian Journey
                       </>
                     )}
                   </button>
@@ -1904,7 +1881,7 @@ const App: React.FC = () => {
                     onClick={() => setIsOnboardingModalOpen(false)}
                     className="text-stone-400 text-[10px] font-bold uppercase tracking-[0.2em] hover:text-stone-600 transition-colors"
                   >
-                    稍后再说
+                    Maybe Later
                   </button>
                 </div>
               </div>
@@ -1935,19 +1912,19 @@ const App: React.FC = () => {
                   <User size={32} />
                 </div>
                 <h3 className="text-2xl font-serif font-bold text-stone-800 mb-2">
-                  {!isHumanVerified ? '安全验证' : '登录时光织锦'}
+                  {isSignUp ? 'Create Account' : 'Login to Life Grid'}
                 </h3>
-                <p className="text-stone-500 text-xs leading-relaxed mb-6">
-                  {!isHumanVerified ? '请证明您不是机器人以继续' : '同步您的生命画布与愿望清单'}
+                <p className="text-stone-500 text-xs leading-relaxed mb-4">
+                  {isSignUp ? 'Start your poetic life journey' : 'Sync your life canvas and wish list'}
                 </p>
 
-                <div className={`${isHumanVerified || isLoggingIn ? 'bg-stone-50 p-6 rounded-[2rem] border border-stone-100 min-h-[220px]' : 'min-h-0'} flex flex-col items-center w-full relative justify-center transition-all duration-500 overflow-hidden`}>
-                  {/* Always keep recaptcha in DOM to avoid "element removed" error */}
-                  <div className={`${!isHumanVerified && !isLoggingIn ? 'opacity-100 relative' : 'opacity-0 absolute pointer-events-none'} flex flex-col items-center space-y-4 transition-opacity duration-500`}>
-                    <div ref={recaptchaRef} className="scale-90 md:scale-100"></div>
-                    <p className="text-[10px] text-stone-400 italic">完成验证后将自动进入登录界面</p>
+                {loginError && (
+                  <div className="w-full mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-500 text-[10px] font-bold animate-in fade-in slide-in-from-top-1">
+                    {loginError}
                   </div>
+                )}
 
+                <div className="bg-stone-50 p-6 rounded-[2rem] border border-stone-100 w-full relative transition-all duration-500">
                   <AnimatePresence mode="wait">
                     {isLoggingIn ? (
                       <motion.div 
@@ -1955,12 +1932,12 @@ const App: React.FC = () => {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="flex flex-col items-center justify-center gap-4"
+                        className="flex flex-col items-center justify-center py-8 gap-4"
                       >
                         <div className="w-12 h-12 border-4 border-stone-200 border-t-stone-800 rounded-full animate-spin"></div>
-                        <p className="text-xs font-bold text-stone-500 uppercase tracking-widest">正在同步数据...</p>
+                        <p className="text-xs font-bold text-stone-500 uppercase tracking-widest">Processing...</p>
                       </motion.div>
-                    ) : isHumanVerified ? (
+                    ) : (
                       <motion.div 
                         key="login-form"
                         initial={{ opacity: 0, scale: 0.95 }}
@@ -1968,43 +1945,61 @@ const App: React.FC = () => {
                         exit={{ opacity: 0, scale: 0.95 }}
                         className="flex flex-col items-center w-full space-y-3"
                       >
-                        <input 
-                          type="tel" 
-                          placeholder="手机号码"
-                          className="w-full px-4 py-3 bg-white border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-stone-800/10 focus:border-stone-800 outline-none transition-all"
-                          value={loginPhone}
-                          onChange={(e) => setLoginPhone(e.target.value)}
-                        />
-                        <div className="relative w-full">
+                        <form onSubmit={isSignUp ? handleEmailSignUp : handleEmailLogin} className="w-full space-y-3">
                           <input 
-                            type="text" 
-                            placeholder="验证码"
-                            className="w-full px-4 py-3 bg-white border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-stone-800/10 focus:border-stone-800 outline-none transition-all pr-24"
-                            value={loginSmsCode}
-                            onChange={(e) => setLoginSmsCode(e.target.value)}
+                            type="email" 
+                            placeholder="Email Address"
+                            required
+                            className="w-full px-4 py-3 bg-white border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-stone-800/10 focus:border-stone-800 outline-none transition-all"
+                            value={loginEmail}
+                            onChange={(e) => setLoginEmail(e.target.value)}
+                          />
+                          <input 
+                            type="password" 
+                            placeholder="Password"
+                            required
+                            className="w-full px-4 py-3 bg-white border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-stone-800/10 focus:border-stone-800 outline-none transition-all"
+                            value={loginPassword}
+                            onChange={(e) => setLoginPassword(e.target.value)}
                           />
                           <button 
-                            onClick={sendSmsCode}
-                            disabled={isSendingCode || !loginPhone}
-                            className="absolute right-1.5 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-stone-100/80 text-stone-600 rounded-lg text-[10px] font-bold hover:bg-stone-200 transition-all disabled:opacity-50 whitespace-nowrap"
+                            type="submit"
+                            className="w-full py-3 bg-stone-800 text-white rounded-xl font-bold text-sm hover:bg-stone-700 transition-all shadow-lg active:scale-[0.98]"
                           >
-                            {isSendingCode ? '发送中...' : '获取验证码'}
+                            {isSignUp ? 'Sign Up' : 'Login'}
                           </button>
+                        </form>
+
+                        <div className="flex items-center w-full gap-2 my-2">
+                          <div className="h-[1px] flex-1 bg-stone-200"></div>
+                          <span className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">OR</span>
+                          <div className="h-[1px] flex-1 bg-stone-200"></div>
                         </div>
+
                         <button 
-                          onClick={() => handleLogin('phone')}
-                          className="w-full mt-2 py-3 bg-stone-800 text-white rounded-xl font-bold text-sm hover:bg-stone-700 transition-all"
+                          onClick={handleGoogleLogin}
+                          className="w-full py-3 bg-white border border-stone-200 text-stone-700 rounded-xl font-bold text-sm hover:bg-stone-50 transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]"
                         >
-                          登录
+                          <svg className="w-4 h-4" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                          </svg>
+                          Continue with Google
                         </button>
+
                         <button 
-                          onClick={() => setIsHumanVerified(false)}
-                          className="text-[10px] text-stone-400 hover:text-stone-600 transition-all mt-2"
+                          onClick={() => {
+                            setIsSignUp(!isSignUp);
+                            setLoginError(null);
+                          }}
+                          className="text-[10px] text-stone-400 hover:text-stone-600 transition-all mt-2 font-bold uppercase tracking-widest"
                         >
-                          重新进行安全验证
+                          {isSignUp ? 'Already have an account? Login' : 'New here? Create an account'}
                         </button>
                       </motion.div>
-                    ) : null}
+                    )}
                   </AnimatePresence>
                 </div>
 
@@ -2012,11 +2007,12 @@ const App: React.FC = () => {
                   disabled={isLoggingIn}
                   onClick={() => {
                     setIsLoginModalOpen(false);
-                    setIsHumanVerified(false);
+                    setIsSignUp(false);
+                    setLoginError(null);
                   }}
                   className="mt-8 text-stone-400 text-xs font-bold uppercase tracking-widest hover:text-stone-600 transition-colors disabled:opacity-0"
                 >
-                  暂不登录
+                  Not Now
                 </button>
               </div>
             </motion.div>
@@ -2045,23 +2041,29 @@ const App: React.FC = () => {
                 <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center text-rose-500 mb-6">
                   <Trash2 size={32} />
                 </div>
-                <h3 className="text-2xl font-bold text-stone-800 mb-2">确定要删除吗？</h3>
+                <h3 className="text-2xl font-bold text-stone-800 mb-2">Are you sure?</h3>
                 <p className="text-stone-500 text-sm leading-relaxed mb-8">
-                  这封信承载着你对未来的期许。一旦删除，这段时光记忆将无法找回。
+                  {letterToDeleteId 
+                    ? "This letter carries your expectations for the future. Once deleted, this memory will be lost forever."
+                    : "This goal represents your vision for life. Once deleted, it will be removed from your life grid."}
                 </p>
                 
                 <div className="flex flex-col w-full gap-3">
                   <button 
-                    onClick={confirmDeleteLetter}
+                    onClick={letterToDeleteId ? confirmDeleteLetter : confirmDeleteGoal}
                     className="w-full py-4 bg-rose-500 text-white rounded-2xl font-bold hover:bg-rose-600 transition-all shadow-lg active:scale-[0.98]"
                   >
-                    确认删除
+                    Confirm Delete
                   </button>
                   <button 
-                    onClick={() => setIsDeleteConfirmOpen(false)}
+                    onClick={() => {
+                      setIsDeleteConfirmOpen(false);
+                      setLetterToDeleteId(null);
+                      setGoalToDeleteId(null);
+                    }}
                     className="w-full py-4 bg-stone-100 text-stone-600 rounded-2xl font-bold hover:bg-stone-200 transition-all"
                   >
-                    保留信件
+                    Keep {letterToDeleteId ? 'Letter' : 'Goal'}
                   </button>
                 </div>
               </div>
@@ -2089,7 +2091,7 @@ const App: React.FC = () => {
                 ? 'bg-blue-600 text-white hover:bg-blue-700' 
                 : 'bg-stone-800 text-white hover:bg-stone-900'}
             `}
-            title="查看我的时光证书"
+            title="View my Time Certificate"
           >
             <Award size={24} className="md:w-7 md:h-7" />
             <motion.div 
@@ -2118,8 +2120,8 @@ const App: React.FC = () => {
               >
                 <div className="p-6 border-b border-stone-100 flex justify-between items-center">
                   <div>
-                    <h3 className="text-xl font-bold text-stone-800">证书预览</h3>
-                    <p className="text-xs text-stone-500 mt-1">长按图片或点击下方按钮保存</p>
+                    <h3 className="text-xl font-bold text-stone-800">Certificate Preview</h3>
+                    <p className="text-xs text-stone-500 mt-1">Long press image or click button below to save</p>
                   </div>
                   <button 
                     onClick={() => setIsImagePreviewOpen(false)}
@@ -2140,17 +2142,17 @@ const App: React.FC = () => {
                 <div className="p-6 bg-white border-t border-stone-100 flex flex-col sm:flex-row gap-4">
                   <a 
                     href={downloadedImage} 
-                    download={`time-guardian-certificate-${allCertificates[currentCertificateIndex].id}.png`}
+                    download={`life-grid-certificate-${allCertificates[currentCertificateIndex].id}.png`}
                     className="flex-1 px-8 py-4 bg-stone-900 text-white rounded-full text-sm font-bold transition-all shadow-xl flex items-center justify-center gap-2 hover:bg-stone-800"
                   >
                     <Download size={18} />
-                    确认下载
+                    Confirm Download
                   </a>
                   <button 
                     onClick={() => setIsImagePreviewOpen(false)}
                     className="px-8 py-4 bg-stone-100 text-stone-600 rounded-full text-sm font-bold transition-all hover:bg-stone-200"
                   >
-                    取消
+                    Cancel
                   </button>
                 </div>
               </motion.div>
