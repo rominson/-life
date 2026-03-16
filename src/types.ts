@@ -9,14 +9,15 @@ export interface LifeGoal {
 export interface FutureLetter {
   id: string;
   content: string;
-  unlockAge: number;
-  createdAt: string;
+  age: number;
+  date: Date;
 }
 
 export interface User {
   id: string;
   name: string;
   email?: string;
+  birthDate?: string;
 }
 
 export interface Stats {
@@ -24,7 +25,6 @@ export interface Stats {
   monthsLived: number;
   yearsLived: number;
   percentLived: number;
-  remainingDays: number;
 }
 
 export interface Certificate {

@@ -1,9 +1,9 @@
 
 import React from 'react';
 import { motion } from 'motion/react';
-import { format, addYears } from 'date-fns';
-import { LifeGoal, Stats } from '../types';
+import { Target, Check } from 'lucide-react';
 import { LegendItem } from './UIComponents';
+import { LifeGoal, Stats } from '../types';
 
 interface LifeGridProps {
   birthDate: string;
@@ -19,66 +19,63 @@ export const LifeGrid: React.FC<LifeGridProps> = ({
   stats,
 }) => {
   return (
-    <motion.div 
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="bg-white p-6 md:p-10 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-[#F5F5F4] flex-[3] flex flex-col min-h-0 relative overflow-hidden"
-    >
-      <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#F59E0B]/5 rounded-full blur-3xl"></div>
-      
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 shrink-0 gap-4">
+    <div className="flex-[2] bg-white rounded-[2.5rem] p-6 md:p-10 border border-stone-100 shadow-xl shadow-stone-100/50 flex flex-col min-h-0">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h3 className="text-2xl font-serif font-semibold text-[#2D2A26]">Life Canvas</h3>
-          <p className="text-xs text-[#A8A29E] uppercase tracking-widest mt-1 font-bold">100-Year Life (1,200 Months)</p>
+          <h2 className="text-2xl font-serif font-bold text-stone-800">Life Grid</h2>
+          <p className="text-sm text-stone-400">Each square represents one month of your 100-year journey.</p>
         </div>
-        <div className="flex flex-wrap justify-center gap-6 text-[11px] font-bold uppercase tracking-wider">
-          <LegendItem color="bg-[#57534E]" label="Past" />
-          <LegendItem color="bg-[#F43F5E]" label="Goals" />
-          <LegendItem color="bg-[#10B981]" label="Achieved" />
-          <LegendItem color="bg-[#F5F5F4] border border-[#E7E5E4]" label="Future" />
+        <div className="hidden md:flex items-center gap-6">
+          <LegendItem color="bg-stone-800" label="Lived" />
+          <LegendItem color="bg-stone-50" label="Future" />
+          <LegendItem color="bg-emerald-400" label="Goal" />
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center py-0.5 md:py-6 px-0.5 md:px-4">
-        <div className="grid grid-cols-[repeat(30,minmax(0,1fr))] sm:grid-cols-[repeat(30,minmax(0,1fr))] md:grid-cols-[repeat(40,minmax(0,1fr))] gap-[3px] sm:gap-[5px] w-full max-w-4xl mx-auto content-center p-0.5 md:p-4">
-          {gridItems.map((lived, idx) => {
-            const monthGoals = goalMap.get(idx);
-            const isGoal = monthGoals && monthGoals.length > 0;
-            const isCompleted = isGoal && monthGoals.some(g => g.completed);
-            
+      <div className="flex-1 overflow-auto pr-2 custom-scrollbar">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(12px,1fr))] gap-1.5 md:gap-2">
+          {gridItems.map((isLived, i) => {
+            const goalsAtMonth = goalMap.get(i);
+            const hasGoal = goalsAtMonth && goalsAtMonth.length > 0;
+            const allCompleted = hasGoal && goalsAtMonth?.every(g => g.completed);
+
             return (
-              <motion.div 
-                key={idx}
+              <motion.div
+                key={i}
                 initial={false}
-                animate={{
-                  scale: isGoal ? 1.4 : 1,
-                  backgroundColor: isGoal 
-                    ? isCompleted ? '#10B981' : '#F43F5E'
-                    : lived ? '#57534E' : '#F5F5F4'
+                animate={{ 
+                  scale: isLived ? 1 : 0.95,
+                  opacity: isLived ? 1 : 0.5
                 }}
                 className={`
-                  aspect-square rounded-full transition-all duration-700
-                  ${isGoal 
-                    ? 'z-10 shadow-[0_0_10px_rgba(0,0,0,0.1)]' 
-                    : lived 
-                      ? 'opacity-90' 
-                      : 'border-[0.5px] border-[#E7E5E4]'
+                  aspect-square rounded-[3px] md:rounded-sm transition-all duration-500 relative group
+                  ${hasGoal 
+                    ? (allCompleted ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-emerald-400') 
+                    : (isLived ? 'bg-stone-800' : 'bg-stone-50 hover:bg-stone-100')
                   }
                 `}
-                title={isGoal 
-                  ? `Goal: ${monthGoals.map(g => g.title).join(', ')} (Age ${Math.floor(idx/12)})${isCompleted ? ' - Achieved' : ''}`
-                  : `Month ${idx + 1} (Age ${Math.floor(idx/12)})`
-                }
-              />
+              >
+                {hasGoal && (
+                  <div className="absolute inset-0 flex items-center justify-center text-white pointer-events-none">
+                    {allCompleted ? <Check size={8} strokeWidth={4} /> : <Target size={8} strokeWidth={3} />}
+                  </div>
+                )}
+                
+                {/* Tooltip */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-stone-900 text-white text-[10px] rounded pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                  Age {Math.floor(i / 12)}y {i % 12}m
+                  {hasGoal && goalsAtMonth?.map(g => (
+                    <div key={g.id} className="mt-1 flex items-center gap-1">
+                      <div className={`w-1 h-1 rounded-full ${g.completed ? 'bg-emerald-400' : 'bg-white'}`} />
+                      {g.title}
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
             );
           })}
         </div>
       </div>
-      
-      <div className="mt-8 pt-6 border-t border-[#F5F5F4] flex justify-between text-[11px] uppercase tracking-[0.2em] font-bold text-[#A8A29E] shrink-0">
-        <span>Dawn: {birthDate ? format(new Date(birthDate), 'MMM yyyy') : ''}</span>
-        <span>Sunset: {birthDate ? format(addYears(new Date(birthDate), 100), 'yyyy') : ''}</span>
-      </div>
-    </motion.div>
+    </div>
   );
 };

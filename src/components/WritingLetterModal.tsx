@@ -1,195 +1,219 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Send, Unlock, Lock, Trash2, Feather } from 'lucide-react';
-import { FutureLetter, Stats } from '../types';
+import { Sparkles, Send, Unlock, Lock, Feather, X, RefreshCw } from 'lucide-react';
+import { Stats } from '../types';
 import { WRITING_PROMPTS } from '../constants';
 
 interface WritingLetterModalProps {
-  isWritingLetter: boolean;
-  setIsWritingLetter: (val: boolean) => void;
-  writingLetterType: 'general' | 'century';
-  currentInspiration: string | null;
-  setCurrentInspiration: (val: string | null) => void;
+  isOpen: boolean;
+  onClose: () => void;
   newLetterContent: string;
   setNewLetterContent: (val: string) => void;
-  newCenturyLetterContent: string;
-  setNewCenturyLetterContent: (val: string) => void;
   newLetterAge: number | '';
   setNewLetterAge: (val: number | '') => void;
-  ageIn2100: number;
-  addLetter: () => void;
+  newCenturyLetterContent: string;
+  setNewCenturyLetterContent: (val: string) => void;
   letterError: string;
   setLetterError: (val: string) => void;
-  letters: FutureLetter[];
+  addLetter: () => void;
   stats: Stats | null;
-  canReachNextCentury: boolean;
-  handleQuickLetterTo2100: () => void;
-  removeLetter: (id: string) => void;
 }
 
 export const WritingLetterModal: React.FC<WritingLetterModalProps> = ({
-  isWritingLetter,
-  setIsWritingLetter,
-  writingLetterType,
-  currentInspiration,
-  setCurrentInspiration,
+  isOpen,
+  onClose,
   newLetterContent,
   setNewLetterContent,
-  newCenturyLetterContent,
-  setNewCenturyLetterContent,
   newLetterAge,
   setNewLetterAge,
-  ageIn2100,
-  addLetter,
+  newCenturyLetterContent,
+  setNewCenturyLetterContent,
   letterError,
   setLetterError,
-  letters,
+  addLetter,
   stats,
-  canReachNextCentury,
-  handleQuickLetterTo2100,
-  removeLetter,
 }) => {
+  const [writingLetterType, setWritingLetterType] = useState<'general' | 'century'>('general');
+  const [currentInspiration, setCurrentInspiration] = useState<string | null>(null);
+
+  const ageIn2100 = stats ? (2100 - (new Date().getFullYear() - stats.yearsLived)) : 100;
+
+  const getRandomInspiration = () => {
+    const prompts = writingLetterType === 'general' ? WRITING_PROMPTS.general : WRITING_PROMPTS.century;
+    const random = prompts[Math.floor(Math.random() * prompts.length)];
+    setCurrentInspiration(random);
+  };
+
   return (
-    <div className="min-h-[220px] flex flex-col">
-      <AnimatePresence mode="wait">
-        {isWritingLetter ? (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <motion.div 
-            key="writing"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="space-y-4 w-full"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm"
+          />
+          
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="relative z-10 bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-stone-100 overflow-hidden flex flex-col max-h-[90vh]"
           >
-            <div className="flex justify-between items-center mb-2">
-              <p className="text-[10px] font-bold text-amber-600/60 uppercase tracking-widest">
-                {writingLetterType === 'general' ? 'Letter to the Future' : 'Century Capsule'}
-              </p>
-              <button 
-                onClick={() => {
-                  const prompts = writingLetterType === 'general' ? WRITING_PROMPTS.general : WRITING_PROMPTS.century;
-                  let randomPrompt = prompts[Math.floor(Math.random() * prompts.length)];
-                  if (randomPrompt === currentInspiration && prompts.length > 1) {
-                    randomPrompt = prompts.find(p => p !== currentInspiration) || randomPrompt;
-                  }
-                  setCurrentInspiration(randomPrompt);
-                }}
-                className="flex items-center gap-1 text-[10px] font-bold text-stone-400 hover:text-amber-600 transition-colors uppercase tracking-widest"
-              >
-                <Sparkles size={10} />
-                {currentInspiration ? 'Change' : 'Get Inspiration'}
+            <div className="p-6 md:p-8 border-b border-stone-50 flex items-center justify-between bg-stone-50/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center text-white">
+                  <Feather size={20} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-serif font-bold text-stone-800">Write to the Future</h2>
+                  <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">Bridging the Gap of Time</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="p-2 hover:bg-stone-100 rounded-full transition-colors">
+                <X size={20} className="text-stone-400" />
               </button>
             </div>
-            <textarea 
-              placeholder={currentInspiration || (writingLetterType === 'general' ? "Write to your future self..." : "Write to your new century self...")}
-              className="w-full h-32 px-4 py-3 bg-[#FAFAF9] border border-[#E7E5E4] rounded-2xl text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all placeholder-[#A8A29E] font-medium resize-none"
-              value={writingLetterType === 'general' ? newLetterContent : newCenturyLetterContent}
-              onChange={(e) => {
-                if (writingLetterType === 'general') {
-                  setNewLetterContent(e.target.value);
-                } else {
-                  setNewCenturyLetterContent(e.target.value);
-                }
-                if (letterError) setLetterError('');
-              }}
-            />
-            <div className="flex flex-col sm:flex-row gap-3">
-              <input 
-                type="number" 
-                placeholder="Unlock Age (e.g., 40)"
-                className={`w-full sm:flex-1 px-4 py-3 bg-[#FAFAF9] border border-[#E7E5E4] rounded-2xl text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all placeholder-[#A8A29E] font-medium ${writingLetterType === 'century' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                value={writingLetterType === 'general' ? newLetterAge : ageIn2100}
-                disabled={writingLetterType === 'century'}
-                onChange={(e) => {
-                  if (writingLetterType === 'general') {
-                    setNewLetterAge(e.target.value === '' ? '' : parseInt(e.target.value));
-                    if (letterError) setLetterError('');
-                  }
-                }}
-              />
-              <button 
-                onClick={addLetter}
-                className="w-full sm:w-auto px-6 py-3 bg-amber-600 text-white rounded-2xl hover:bg-amber-700 transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
-              >
-                <Send size={18} />
-                <span className="text-sm font-bold">Send</span>
-              </button>
-            </div>
-            {letterError && (
-              <motion.p 
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-rose-500 text-[10px] font-bold mt-1 ml-1"
-              >
-                {letterError}
-              </motion.p>
-            )}
-          </motion.div>
-        ) : (
-          <motion.div 
-            key="list"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="flex-1 overflow-y-auto pr-2 custom-scrollbar max-h-[300px] w-full"
-          >
-            <div className="flex flex-col gap-4">
-              {letters.length === 0 ? (
-                <div className="text-center py-10 px-1">
-                  {canReachNextCentury ? (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={handleQuickLetterTo2100}
-                      className="space-y-3 cursor-pointer p-6 rounded-[2rem] bg-amber-50/40 border border-amber-100/50 hover:bg-amber-50/60 transition-all group shadow-sm"
-                    >
-                      <div className="flex justify-center text-amber-500 mb-1 group-hover:scale-110 transition-transform">
-                        <Sparkles size={24} />
-                      </div>
-                      <p className="text-amber-800/90 text-[13px] font-medium italic leading-relaxed tracking-wide">
-                        You have a chance to witness the dawn of the 22nd century. Write a letter to your 2100 self.
+
+            <div className="flex-1 overflow-auto p-6 md:p-8">
+              <div className="flex p-1 bg-stone-100 rounded-2xl mb-8 w-fit mx-auto">
+                <button 
+                  onClick={() => setWritingLetterType('general')}
+                  className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${writingLetterType === 'general' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}
+                >
+                  Future Self
+                </button>
+                <button 
+                  onClick={() => setWritingLetterType('century')}
+                  className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${writingLetterType === 'century' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}
+                >
+                  22nd Century
+                </button>
+              </div>
+
+              {writingLetterType === 'general' ? (
+                <div className="space-y-6">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1">Unlock Age</label>
+                    <div className="flex items-center gap-4">
+                      <input 
+                        type="number" 
+                        placeholder="e.g. 30" 
+                        value={newLetterAge}
+                        onChange={(e) => setNewLetterAge(e.target.value === '' ? '' : Number(e.target.value))}
+                        className="w-24 bg-stone-50 border border-stone-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200"
+                      />
+                      <p className="text-xs text-stone-400 italic">
+                        {newLetterAge ? `You will be ${newLetterAge} years old when this unlocks.` : 'Choose an age to unlock this message.'}
                       </p>
-                    </motion.div>
-                  ) : (
-                    <p className="text-[#A8A29E] text-sm font-serif italic">No letters to the future yet...</p>
-                  )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between ml-1">
+                      <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Your Message</label>
+                      <button 
+                        onClick={getRandomInspiration}
+                        className="flex items-center gap-1.5 text-[10px] font-bold text-stone-400 hover:text-stone-600 transition-colors"
+                      >
+                        <RefreshCw size={10} />
+                        Get Inspiration
+                      </button>
+                    </div>
+                    
+                    <AnimatePresence mode="wait">
+                      {currentInspiration && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="bg-stone-50 p-4 rounded-2xl border border-stone-100 text-xs text-stone-500 italic relative group"
+                        >
+                          "{currentInspiration}"
+                          <button onClick={() => setCurrentInspiration(null)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <X size={12} />
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <textarea 
+                      placeholder="Dear future self..." 
+                      value={newLetterContent}
+                      onChange={(e) => setNewLetterContent(e.target.value)}
+                      className="w-full h-48 bg-stone-50 border border-stone-100 rounded-[2rem] px-6 py-5 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200 resize-none leading-relaxed"
+                    />
+                  </div>
                 </div>
               ) : (
-                [...letters].sort((a, b) => a.unlockAge - b.unlockAge).map(letter => {
-                  const isUnlocked = (stats?.yearsLived || 0) >= letter.unlockAge;
-                  return (
-                    <div key={letter.id} className="p-4 bg-[#FAFAF9] rounded-[1.5rem] border border-[#F5F5F4] group hover:border-[#E7E5E4] transition-all">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          {isUnlocked ? <Unlock size={14} className="text-emerald-500" /> : <Lock size={14} className="text-amber-500" />}
-                          <span className="text-[10px] font-black text-[#A8A29E] uppercase tracking-widest">
-                            Unlock at Age {letter.unlockAge}
-                          </span>
-                        </div>
-                        <button 
-                          onClick={() => removeLetter(letter.id)}
-                          className="p-1 text-[#D6D3D1] hover:text-[#F43F5E] transition-colors opacity-40 md:opacity-0 group-hover:opacity-100"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                <div className="space-y-6">
+                  <div className="bg-stone-900 rounded-[2rem] p-6 text-white relative overflow-hidden">
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles size={16} className="text-stone-400" />
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400">Century Traveler Program</span>
                       </div>
-                      {isUnlocked ? (
-                        <p className="text-sm text-[#44403C] leading-relaxed italic">"{letter.content}"</p>
-                      ) : (
-                        <div className="h-12 flex items-center justify-center bg-stone-100/50 rounded-xl border border-dashed border-stone-200">
-                          <span className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">Content Encrypted</span>
-                        </div>
-                      )}
+                      <h3 className="text-xl font-serif font-bold mb-2">Witness the Year 2100</h3>
+                      <p className="text-xs text-stone-400 leading-relaxed">
+                        This message is destined for the next century. You will be approximately <span className="text-white font-bold">{ageIn2100} years old</span>. 
+                        A special "Century Traveler" certificate will be issued.
+                      </p>
                     </div>
-                  );
-                })
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between ml-1">
+                      <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Message to 2100</label>
+                      <button 
+                        onClick={getRandomInspiration}
+                        className="flex items-center gap-1.5 text-[10px] font-bold text-stone-400 hover:text-stone-600 transition-colors"
+                      >
+                        <RefreshCw size={10} />
+                        Get Inspiration
+                      </button>
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                      {currentInspiration && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="bg-stone-50 p-4 rounded-2xl border border-stone-100 text-xs text-stone-500 italic"
+                        >
+                          "{currentInspiration}"
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <textarea 
+                      placeholder="To the world of 2100..." 
+                      value={newCenturyLetterContent}
+                      onChange={(e) => setNewCenturyLetterContent(e.target.value)}
+                      className="w-full h-48 bg-stone-50 border border-stone-100 rounded-[2rem] px-6 py-5 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200 resize-none leading-relaxed"
+                    />
+                  </div>
+                </div>
               )}
             </div>
+
+            <div className="p-6 md:p-8 border-t border-stone-50 bg-stone-50/30 flex flex-col gap-4">
+              {letterError && <p className="text-red-400 text-[10px] font-bold uppercase text-center">{letterError}</p>}
+              <button 
+                onClick={addLetter}
+                className="w-full py-4 bg-stone-900 text-white rounded-2xl font-bold hover:bg-stone-800 transition-all shadow-xl shadow-stone-200 active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <Send size={18} />
+                Send to the Future
+              </button>
+            </div>
           </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 };

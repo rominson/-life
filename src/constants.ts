@@ -1,4 +1,7 @@
 
+export const MAX_AGE_YEARS = 100;
+export const TOTAL_MONTHS = MAX_AGE_YEARS * 12;
+
 export const WRITING_PROMPTS = {
   general: [
     "What is the wish you want to fulfill most right now?",

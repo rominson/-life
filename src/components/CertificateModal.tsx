@@ -145,20 +145,15 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
                             {allCertificates[currentCertificateIndex].isCenturyTraveler && (
                               <>
                                 <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_0%,rgba(30,64,175,0.35)_0%,rgba(37,99,235,0.1)_30%,transparent_60%)] pointer-events-none" />
-                                <div className="absolute top-[6px] left-[6px] w-8 h-8 border-t border-l border-[rgba(96,165,250,0.3)] rounded-tl-sm pointer-events-none z-30" />
-                                <div className="absolute top-[6px] right-[6px] w-8 h-8 border-t border-r border-[rgba(96,165,250,0.3)] rounded-tr-sm pointer-events-none z-30" />
-                                <div className="absolute bottom-[6px] left-[6px] w-8 h-8 border-b border-l border-[rgba(96,165,250,0.3)] rounded-bl-sm pointer-events-none z-30" />
-                                <div className="absolute bottom-[6px] right-[6px] w-8 h-8 border-b border-r border-[rgba(96,165,250,0.3)] rounded-br-sm pointer-events-none z-30" />
+                                
+                                {/* Corner Accents - Simplified to avoid rendering artifacts */}
+                                <div className="absolute inset-[6px] border border-[rgba(96,165,250,0.15)] pointer-events-none z-30" style={{ clipPath: 'polygon(0 0, 20% 0, 20% 1px, 1px 1px, 1px 20%, 0 20%, 0 0, 80% 0, 100% 0, 100% 20%, calc(100% - 1px) 20%, calc(100% - 1px) 1px, 80% 1px, 80% 0, 100% 80%, 100% 100%, 80% 100%, 80% calc(100% - 1px), calc(100% - 1px) calc(100% - 1px), calc(100% - 1px) 80%, 100% 80%, 20% 100%, 0 100%, 0 80%, 1px 80%, 1px calc(100% - 1px), 20% calc(100% - 1px), 20% 100%)' }} />
 
                                 <div className="absolute top-3 left-1/2 -translate-x-1/2 md:top-6 w-full flex justify-center">
-                                  <motion.div 
-                                    initial={{ opacity: 0, scale: 0.5 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    className="bg-gradient-to-r from-[rgba(37,99,235,0.2)] to-[rgba(79,70,229,0.2)] border border-[rgba(96,165,250,0.4)] px-2 py-0.5 md:px-3 md:py-1 rounded-full flex items-center gap-1 md:gap-1.5 shadow-[0_0_15px_rgba(59,130,246,0.2)] whitespace-nowrap"
-                                  >
+                                  <div className="bg-blue-900/20 border border-blue-400/40 px-2 py-0.5 md:px-3 md:py-1 rounded-full flex items-center gap-1 md:gap-1.5 shadow-[0_0_10px_rgba(59,130,246,0.1)] whitespace-nowrap">
                                     <Sparkles size={12} className="text-[#93c5fd] shrink-0" />
                                     <span className="text-[8px] md:text-[10px] font-bold text-[#bfdbfe] uppercase tracking-[0.2em] whitespace-nowrap">22nd Century Witness</span>
-                                  </motion.div>
+                                  </div>
                                 </div>
                               </>
                             )}
@@ -272,13 +267,13 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
                               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 group/seal">
                                 <div className="w-12 h-12 md:w-20 md:h-20 relative">
                                   <div className={`
-                                    absolute inset-0 rounded-[45%_55%_50%_50%/50%_45%_55%_50%] shadow-[inset_-2px_-2px_4px_rgba(0,0,0,0.4),inset_2px_2px_4px_rgba(255,255,255,0.2),4px_4px_12px_rgba(0,0,0,0.4)] transition-colors duration-1000
-                                    ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'bg-[#2E1065] shadow-[0_0_20px_rgba(139,92,246,0.3)]' : 'bg-[#8B1A1A]'}
+                                    absolute inset-0 rounded-[45%_55%_50%_50%/50%_45%_55%_50%] shadow-[inset_-2px_-2px_4px_rgba(0,0,0,0.3),inset_2px_2px_4px_rgba(255,255,255,0.1),4px_4px_10px_rgba(0,0,0,0.3)] transition-colors duration-1000
+                                    ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'bg-[#2E1065] shadow-[0_0_15px_rgba(139,92,246,0.3)]' : 'bg-[#8B1A1A]'}
                                   `}></div>
                                   
                                   <div className={`
-                                    absolute inset-[10%] rounded-full shadow-[inset_3px_3px_6px_rgba(0,0,0,0.6),inset_-2px_-2px_4px_rgba(255,255,255,0.1)] flex items-center justify-center overflow-hidden border transition-colors duration-1000
-                                    ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'bg-[#4C1D95] border-[rgba(124,58,237,0.3)]' : 'bg-[#991B1B] border-[rgba(127,29,29,0.3)]'}
+                                    absolute inset-[10%] rounded-full shadow-[inset_2px_2px_4px_rgba(0,0,0,0.5),inset_-1px_-1px_2px_rgba(255,255,255,0.1)] flex items-center justify-center overflow-hidden border transition-colors duration-1000
+                                    ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'bg-[#4C1D95] border-[rgba(124,58,237,0.2)]' : 'bg-[#991B1B] border-[rgba(127,29,29,0.2)]'}
                                   `}>
                                     <svg viewBox="0 0 100 100" className="w-[85%] h-[85%]">
                                       <defs>

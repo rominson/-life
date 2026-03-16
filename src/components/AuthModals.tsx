@@ -1,21 +1,18 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Award, Check, X } from 'lucide-react';
+import { User, Award, Check, X, LogIn, Mail, Lock, Sparkles } from 'lucide-react';
 
 interface AuthModalsProps {
   isLoginModalOpen: boolean;
   setIsLoginModalOpen: (val: boolean) => void;
   isOnboardingModalOpen: boolean;
   setIsOnboardingModalOpen: (val: boolean) => void;
-  isSignUp: boolean;
-  setIsSignUp: (val: boolean) => void;
   loginEmail: string;
   setLoginEmail: (val: string) => void;
   loginPassword: string;
   setLoginPassword: (val: string) => void;
   loginError: string | null;
-  setLoginError: (val: string | null) => void;
   isLoggingIn: boolean;
   handleEmailLogin: (e: React.FormEvent) => void;
   handleEmailSignUp: (e: React.FormEvent) => void;
@@ -31,14 +28,11 @@ export const AuthModals: React.FC<AuthModalsProps> = ({
   setIsLoginModalOpen,
   isOnboardingModalOpen,
   setIsOnboardingModalOpen,
-  isSignUp,
-  setIsSignUp,
   loginEmail,
   setLoginEmail,
   loginPassword,
   setLoginPassword,
   loginError,
-  setLoginError,
   isLoggingIn,
   handleEmailLogin,
   handleEmailSignUp,
@@ -48,186 +42,159 @@ export const AuthModals: React.FC<AuthModalsProps> = ({
   updateUserName,
   isUpdatingName,
 }) => {
+  const [isSignUp, setIsSignUp] = useState(false);
+
   return (
     <>
-      {/* First Login Onboarding Modal */}
       <AnimatePresence>
-        {isOnboardingModalOpen && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+        {isLoginModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-stone-900/60 backdrop-blur-md"
+              onClick={() => setIsLoginModalOpen(false)}
+              className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm"
             />
+            
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-[#F5F2ED] w-full max-w-md p-10 rounded-[2.5rem] shadow-2xl border border-white overflow-hidden"
+              className="relative z-10 bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl border border-stone-100 overflow-hidden"
             >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-stone-800 mb-8 shadow-inner border border-stone-100">
-                  <Award size={40} strokeWidth={1} />
+              <div className="p-8 pb-0 flex justify-between items-start">
+                <div>
+                  <h2 className="text-2xl font-serif font-bold text-stone-800">{isSignUp ? 'Join LifeGrid' : 'Welcome Back'}</h2>
+                  <p className="text-sm text-stone-400 mt-1">Your journey through time continues.</p>
                 </div>
-                
-                <h3 className="text-2xl font-bold text-stone-800 mb-4 tracking-tight">Welcome to LifeGrid</h3>
-                
-                <p className="text-stone-600 text-sm leading-relaxed mb-8 italic">
-                  "Guardian, how should we address you?<br />This name will be engraved on your Time Certificate."
-                </p>
+                <button onClick={() => setIsLoginModalOpen(false)} className="p-2 hover:bg-stone-50 rounded-full transition-colors">
+                  <X size={20} className="text-stone-300" />
+                </button>
+              </div>
 
-                <div className="w-full space-y-6">
-                  <div className="relative">
-                    <input 
-                      type="text" 
-                      placeholder="Your name or nickname"
-                      className="w-full px-6 py-4 bg-white border border-stone-200 rounded-2xl text-lg font-medium focus:ring-4 focus:ring-stone-800/5 focus:border-stone-800 outline-none transition-all text-center"
-                      value={onboardingName}
-                      onChange={(e) => setOnboardingName(e.target.value)}
-                      autoFocus
-                    />
+              <div className="p-8">
+                <form onSubmit={isSignUp ? handleEmailSignUp : handleEmailLogin} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1">Email Address</label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-300" size={18} />
+                      <input 
+                        type="email" 
+                        required
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                        className="w-full bg-stone-50 border border-stone-100 rounded-2xl pl-12 pr-4 py-4 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200 transition-all"
+                        placeholder="traveler@time.com"
+                      />
+                    </div>
                   </div>
 
-                  <button 
-                    onClick={() => updateUserName(onboardingName)}
-                    disabled={isUpdatingName || !onboardingName.trim()}
-                    className="w-full py-4 bg-stone-800 text-white rounded-2xl font-bold text-sm hover:bg-stone-700 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {isUpdatingName ? (
-                      <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                    ) : (
-                      <>
-                        <Check size={18} />
-                        Start Guardian Journey
-                      </>
-                    )}
-                  </button>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1">Password</label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-300" size={18} />
+                      <input 
+                        type="password" 
+                        required
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        className="w-full bg-stone-50 border border-stone-100 rounded-2xl pl-12 pr-4 py-4 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200 transition-all"
+                        placeholder="••••••••"
+                      />
+                    </div>
+                  </div>
+
+                  {loginError && (
+                    <p className="text-red-500 text-xs font-medium text-center bg-red-50 py-2 rounded-lg">{loginError}</p>
+                  )}
 
                   <button 
-                    onClick={() => setIsOnboardingModalOpen(false)}
-                    className="text-stone-400 text-[10px] font-bold uppercase tracking-[0.2em] hover:text-stone-600 transition-colors"
+                    type="submit"
+                    disabled={isLoggingIn}
+                    className="w-full py-4 bg-stone-900 text-white rounded-2xl font-bold hover:bg-stone-800 transition-all shadow-xl shadow-stone-200 active:scale-[0.98] disabled:opacity-50"
                   >
-                    Maybe Later
+                    {isLoggingIn ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
                   </button>
+                </form>
+
+                <div className="relative my-8">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-stone-100"></div>
+                  </div>
+                  <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-bold">
+                    <span className="bg-white px-4 text-stone-300">Or continue with</span>
+                  </div>
                 </div>
+
+                <button 
+                  onClick={handleGoogleLogin}
+                  className="w-full py-4 bg-white border border-stone-200 text-stone-700 rounded-2xl font-bold hover:bg-stone-50 transition-all flex items-center justify-center gap-3 active:scale-[0.98]"
+                >
+                  <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
+                  Google Account
+                </button>
+
+                <p className="text-center mt-8 text-sm text-stone-400">
+                  {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+                  <button 
+                    onClick={() => setIsSignUp(!isSignUp)}
+                    className="ml-2 text-stone-800 font-bold hover:underline"
+                  >
+                    {isSignUp ? 'Sign In' : 'Sign Up'}
+                  </button>
+                </p>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* Login Modal */}
       <AnimatePresence>
-        {isLoginModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {isOnboardingModalOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => !isLoggingIn && setIsLoginModalOpen(false)}
-              className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm"
+              className="absolute inset-0 bg-stone-900/60 backdrop-blur-md"
             />
+            
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white w-full max-w-sm p-8 rounded-[2.5rem] shadow-2xl border border-stone-100 overflow-hidden"
+              className="relative z-10 bg-white w-full max-w-md rounded-[3rem] shadow-2xl border border-stone-100 overflow-hidden"
             >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 bg-stone-50 rounded-full flex items-center justify-center text-stone-800 mb-6">
-                  <User size={32} />
+              <div className="p-10 text-center">
+                <div className="w-20 h-20 bg-stone-900 rounded-3xl flex items-center justify-center text-white mx-auto mb-8 shadow-2xl shadow-stone-200">
+                  <Sparkles size={40} />
                 </div>
-                <h3 className="text-2xl font-serif font-bold text-stone-800 mb-2">
-                  {isSignUp ? 'Create Account' : 'Login to Life Grid'}
-                </h3>
-                <p className="text-stone-500 text-xs leading-relaxed mb-4">
-                  {isSignUp ? 'Start your poetic life journey' : 'Sync your life canvas and wish list'}
+                <h2 className="text-3xl font-serif font-bold text-stone-800 mb-2">Welcome, Traveler</h2>
+                <p className="text-stone-400 text-sm mb-10 leading-relaxed">
+                  Before we begin your journey through the life grid, how should we address you?
                 </p>
 
-                {loginError && (
-                  <div className="w-full mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-500 text-[10px] font-bold animate-in fade-in slide-in-from-top-1">
-                    {loginError}
+                <div className="space-y-6">
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1">Your Name</label>
+                    <input 
+                      type="text" 
+                      value={onboardingName}
+                      onChange={(e) => setOnboardingName(e.target.value)}
+                      placeholder="e.g. Arthur Dent"
+                      className="w-full bg-stone-50 border border-stone-100 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200 transition-all text-center font-medium"
+                    />
                   </div>
-                )}
 
-                <div className="bg-stone-50 p-6 rounded-[2rem] border border-stone-100 w-full relative transition-all duration-500">
-                  <AnimatePresence mode="wait">
-                    {isLoggingIn ? (
-                      <motion.div 
-                        key="logging-in"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="flex flex-col items-center justify-center py-8 gap-4"
-                      >
-                        <div className="w-12 h-12 border-4 border-stone-200 border-t-stone-800 rounded-full animate-spin"></div>
-                        <p className="text-xs font-bold text-stone-500 uppercase tracking-widest">Processing...</p>
-                      </motion.div>
-                    ) : (
-                      <motion.div 
-                        key="login-form"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="flex flex-col items-center w-full space-y-3"
-                      >
-                        <form onSubmit={isSignUp ? handleEmailSignUp : handleEmailLogin} className="w-full space-y-3">
-                          <input 
-                            type="email" 
-                            placeholder="Email Address"
-                            required
-                            className="w-full px-4 py-3 bg-white border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-stone-800/10 focus:border-stone-800 outline-none transition-all"
-                            value={loginEmail}
-                            onChange={(e) => setLoginEmail(e.target.value)}
-                          />
-                          <input 
-                            type="password" 
-                            placeholder="Password"
-                            required
-                            className="w-full px-4 py-3 bg-white border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-stone-800/10 focus:border-stone-800 outline-none transition-all"
-                            value={loginPassword}
-                            onChange={(e) => setLoginPassword(e.target.value)}
-                          />
-                          <button 
-                            type="submit"
-                            className="w-full py-3 bg-stone-800 text-white rounded-xl font-bold text-sm hover:bg-stone-700 transition-all shadow-lg active:scale-[0.98]"
-                          >
-                            {isSignUp ? 'Sign Up' : 'Login'}
-                          </button>
-                        </form>
-
-                        <div className="flex items-center w-full gap-2 my-2">
-                          <div className="h-[1px] flex-1 bg-stone-200"></div>
-                          <span className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">OR</span>
-                          <div className="h-[1px] flex-1 bg-stone-200"></div>
-                        </div>
-
-                        <button 
-                          onClick={handleGoogleLogin}
-                          className="w-full py-3 bg-white border border-stone-200 text-stone-700 rounded-xl font-bold text-sm hover:bg-stone-50 transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]"
-                        >
-                          <svg className="w-4 h-4" viewBox="0 0 24 24">
-                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                          </svg>
-                          Continue with Google
-                        </button>
-
-                        <button 
-                          onClick={() => {
-                            setIsSignUp(!isSignUp);
-                            setLoginError(null);
-                          }}
-                          className="text-[10px] text-stone-400 hover:text-stone-600 transition-all mt-2 font-bold uppercase tracking-widest"
-                        >
-                          {isSignUp ? 'Already have an account? Login' : 'New here? Create an account'}
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  <button 
+                    onClick={() => updateUserName(onboardingName)}
+                    disabled={!onboardingName.trim() || isUpdatingName}
+                    className="w-full py-5 bg-stone-900 text-white rounded-2xl font-bold hover:bg-stone-800 transition-all shadow-xl shadow-stone-200 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isUpdatingName ? 'Saving...' : 'Start My Journey'}
+                    <Check size={18} />
+                  </button>
                 </div>
               </div>
             </motion.div>

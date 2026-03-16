@@ -88,24 +88,25 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
             } : { opacity: 1, scale: 1, y: 0 }}
             transition={isSubmittingReminder ? { duration: 2.2, ease: "easeIn" } : {}}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative z-10 bg-white w-full max-w-md p-8 rounded-[2.5rem] shadow-2xl border border-stone-100 overflow-hidden"
+            className="relative z-10 bg-white/95 backdrop-blur-sm w-full max-w-[340px] sm:max-w-md p-6 sm:p-8 rounded-[2.5rem] shadow-2xl border border-stone-100 overflow-hidden"
           >
             <div className={`flex flex-col items-center text-center transition-all duration-700 ${isSubmittingReminder ? 'opacity-0 scale-75 blur-sm' : 'opacity-100'}`}>
               <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 mb-6">
                 <Clock size={32} />
               </div>
-              <h3 className="text-2xl font-serif font-bold text-stone-800 mb-3">Enable Future Reminder</h3>
-              <p className="text-stone-500 text-sm leading-relaxed mb-6">
+              <h3 className="text-xl sm:text-2xl font-serif font-bold text-stone-800 mb-2 sm:mb-3">Enable Future Reminder</h3>
+              <p className="text-stone-500 text-xs sm:text-sm leading-relaxed mb-4 sm:mb-6">
                 Time flies, and we worry you might forget this letter. When the capsule unlocks at <span className="font-bold text-emerald-600">Age {pendingLetter?.age}</span>, we will notify you via SMS immediately.
               </p>
 
-              <div className="w-full space-y-4">
-                <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100 flex flex-col items-center">
-                  <div className="w-16 h-16 bg-white rounded-full shadow-sm mb-4 flex items-center justify-center text-emerald-600">
-                    <Smartphone size={32} />
+              <div className="w-full space-y-3 sm:space-y-4">
+                <div className="bg-emerald-50/50 p-4 sm:p-6 rounded-2xl border border-emerald-100 flex flex-col items-center">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-full shadow-sm mb-3 sm:mb-4 flex items-center justify-center text-emerald-600">
+                    <Smartphone size={24} className="sm:hidden" />
+                    <Smartphone size={32} className="hidden sm:block" />
                   </div>
-                  <p className="text-[11px] text-emerald-700 font-medium text-center">
-                    Reminder Number: <span className="font-bold">{(user as any)?.phone}</span><br/>
+                  <p className="text-[10px] sm:text-[11px] text-emerald-700 font-medium text-center">
+                    Reminder Number: <span className="font-bold">{(user as any)?.phone || 'Not Set'}</span><br/>
                     Phone number is the most stable way to connect across time.
                   </p>
                 </div>

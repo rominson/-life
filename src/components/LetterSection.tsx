@@ -1,7 +1,7 @@
 
 import React from 'react';
+import { Feather, Mail, Lock, Unlock, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mail, Plus, Lock, Trash2 } from 'lucide-react';
 import { FutureLetter, Stats } from '../types';
 
 interface LetterSectionProps {
@@ -20,85 +20,91 @@ export const LetterSection: React.FC<LetterSectionProps> = ({
   openLetter,
 }) => {
   return (
-    <motion.div 
-      layout
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: 0.1 }}
-      className="bg-white p-8 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-[#F5F5F4] flex flex-col min-h-[380px] w-full"
-    >
-      <div className="flex items-center justify-between mb-8 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-[#F0FDF4] rounded-xl text-[#10B981]">
-            <Mail size={20} />
-          </div>
-          <h3 className="text-xl font-serif font-bold text-[#2D2A26]">Time Capsule</h3>
-        </div>
+    <div className="bg-white rounded-[2.5rem] p-8 border border-stone-100 shadow-xl shadow-stone-100/50 flex flex-col min-h-0">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-serif font-bold text-stone-800">Time Capsules</h2>
         <button 
           onClick={() => setIsWritingLetter(true)}
-          className="p-2 bg-[#FAFAF9] text-[#57534E] rounded-xl hover:bg-[#F5F5F4] transition-all active:scale-95 border border-[#E7E5E4]"
+          className="flex items-center gap-2 text-stone-900 hover:text-stone-600 transition-colors"
         >
-          <Plus size={20} />
+          <Feather size={18} />
+          <span className="text-xs font-bold uppercase tracking-widest">Write Letter</span>
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar max-h-[300px]">
-        <AnimatePresence initial={false}>
-          <div className="flex flex-col gap-4">
-            {[...letters].sort((a, b) => a.age - b.age).map(letter => {
+      <div className="flex-1 overflow-auto pr-2 custom-scrollbar space-y-4">
+        <AnimatePresence mode="popLayout">
+          {letters.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-stone-50 rounded-[2rem]">
+              <div className="w-12 h-12 bg-stone-50 rounded-full flex items-center justify-center text-stone-200 mb-4">
+                <Mail size={24} strokeWidth={1} />
+              </div>
+              <p className="text-sm text-stone-400">No letters sent to the future yet.</p>
+            </div>
+          ) : (
+            letters.sort((a, b) => a.age - b.age).map((letter) => {
               const isUnlocked = (stats?.yearsLived || 0) >= letter.age;
               
               return (
                 <motion.div 
                   key={letter.id}
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
                   className={`
-                    flex items-center justify-between p-4 rounded-[1.5rem] border transition-all group
+                    group relative p-5 rounded-[2rem] border transition-all cursor-pointer
                     ${isUnlocked 
-                      ? 'bg-[#F0FDF4] border-[#DCFCE7] hover:border-[#BBF7D0] cursor-pointer' 
-                      : 'bg-[#FAFAF9] border-[#F5F5F4] opacity-80'
+                      ? 'bg-stone-900 text-white border-stone-900 shadow-xl shadow-stone-200' 
+                      : 'bg-stone-50 border-stone-100 hover:bg-white hover:border-stone-200'
                     }
                   `}
                   onClick={() => isUnlocked && openLetter(letter)}
                 >
-                  <div className="flex items-center gap-4">
-                    <div className={`
-                      w-10 h-10 rounded-full flex items-center justify-center
-                      ${isUnlocked ? 'bg-white text-[#10B981]' : 'bg-white text-[#A8A29E]'}
-                    `}>
-                      {isUnlocked ? <Mail size={18} /> : <Lock size={18} />}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`
+                        w-10 h-10 rounded-2xl flex items-center justify-center
+                        ${isUnlocked ? 'bg-white/10 text-white' : 'bg-white text-stone-300 shadow-sm'}
+                      `}>
+                        {isUnlocked ? <Unlock size={18} /> : <Lock size={18} />}
+                      </div>
+                      <div>
+                        <p className={`text-[10px] font-bold uppercase tracking-widest ${isUnlocked ? 'text-white/50' : 'text-stone-400'}`}>
+                          Unlock at Age {letter.age}
+                        </p>
+                        <h3 className="text-sm font-serif font-bold">
+                          {isUnlocked ? 'Message from the Past' : 'Locked Time Capsule'}
+                        </h3>
+                      </div>
                     </div>
-                    <div className="flex flex-col">
-                      <span className={`text-sm font-bold ${isUnlocked ? 'text-[#166534]' : 'text-[#78716C]'}`}>
-                        Letter to Age {letter.age}
-                      </span>
-                      <span className="text-[10px] font-black text-[#A8A29E] uppercase tracking-widest mt-0.5">
-                        {isUnlocked ? 'Unlocked & Ready' : `Unlocks in ${letter.age - (stats?.yearsLived || 0)} years`}
-                      </span>
-                    </div>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); removeLetter(letter.id); }}
+                      className={`p-2 transition-all ${isUnlocked ? 'text-white/30 hover:text-white' : 'text-stone-300 hover:text-red-400'}`}
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeLetter(letter.id);
-                    }}
-                    className="p-2 text-[#D6D3D1] hover:text-[#F43F5E] transition-colors opacity-40 md:opacity-0 group-hover:opacity-100"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  
+                  {!isUnlocked && (
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1 bg-stone-200 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-stone-400 transition-all duration-1000" 
+                          style={{ width: `${Math.min(100, ((stats?.yearsLived || 0) / letter.age) * 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-stone-400 tabular-nums">
+                        {Math.max(0, letter.age - (stats?.yearsLived || 0))}y left
+                      </span>
+                    </div>
+                  )}
                 </motion.div>
               );
-            })}
-            {letters.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-[#A8A29E] text-sm font-serif italic">No letters sent to the future yet...</p>
-              </div>
-            )}
-          </div>
+            })
+          )}
         </AnimatePresence>
       </div>
-    </motion.div>
+    </div>
   );
 };
