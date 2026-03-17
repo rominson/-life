@@ -1540,7 +1540,7 @@ const App: React.FC = () => {
                 exit={{ opacity: 0 }}
                 className="absolute inset-0 z-0"
               >
-                <TimeTunnel />
+                <TimeTunnel isFrozen={isSubmittingReminder} />
               </motion.div>
             )}
 
@@ -2329,7 +2329,7 @@ const App: React.FC = () => {
   );
 };
 
-const TimeTunnel = () => {
+const TimeTunnel = ({ isFrozen }: { isFrozen?: boolean }) => {
   const [streakCount, setStreakCount] = useState(window.innerWidth < 768 ? 150 : 320);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const stars = Array.from({ length: 100 });
@@ -2372,7 +2372,7 @@ const TimeTunnel = () => {
   }, [streakCount, isMobile]);
   
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-[#020617]">
+    <div className={`absolute inset-0 overflow-hidden pointer-events-none z-0 bg-[#020617] ${isFrozen && isMobile ? 'opacity-40' : ''}`}>
       {/* Deep Space Nebula Glows */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.25),transparent_70%)]" />
       
@@ -2386,7 +2386,7 @@ const TimeTunnel = () => {
             left: `${Math.random() * 100}%`,
             opacity: Math.random() * 0.9
           }}
-          animate={{ opacity: [0.2, 1, 0.2], scale: [1, 1.2, 1] }}
+          animate={isFrozen && isMobile ? false : { opacity: [0.2, 1, 0.2], scale: [1, 1.2, 1] }}
           transition={{ duration: 1.5 + Math.random() * 2.5, repeat: Infinity }}
         />
       ))}
@@ -2405,7 +2405,7 @@ const TimeTunnel = () => {
             originY: 0,
             originX: '50%'
           }}
-          animate={{ 
+          animate={isFrozen && isMobile ? false : { 
             height: ['0px', '4500px'], 
             opacity: [0, 1, 0.5, 0],
             scaleX: [1, 1.2, 1],
