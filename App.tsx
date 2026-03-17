@@ -1530,7 +1530,7 @@ const App: React.FC = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => !isSubmittingReminder && setIsReminderModalOpen(false)}
-              className="absolute inset-0 bg-stone-900/60 backdrop-blur-md"
+              className={`absolute inset-0 bg-stone-900/${isMobile ? '80' : '60'} ${isMobile ? '' : 'backdrop-blur-md'}`}
             />
 
             {isSubmittingReminder && (
@@ -1550,13 +1550,13 @@ const App: React.FC = () => {
                 opacity: [1, 1, 0], 
                 scale: [1, 0.1, 0],
                 rotateZ: [0, 5, 15],
-                filter: ["blur(0px)", "blur(2px)", "blur(10px)"]
+                filter: isMobile ? ["none", "none", "none"] : ["blur(0px)", "blur(2px)", "blur(10px)"]
               } : { opacity: 1, scale: 1, y: 0 }}
               transition={isSubmittingReminder ? { duration: 2.2, ease: "easeIn" } : {}}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="relative z-10 bg-white w-full max-w-[85%] sm:max-w-md max-h-[80vh] overflow-y-auto p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl border border-stone-100"
             >
-              <div className={`flex flex-col items-center text-center transition-all duration-700 ${isSubmittingReminder ? 'opacity-0 scale-75 blur-sm' : 'opacity-100'}`}>
+              <div className={`flex flex-col items-center text-center transition-all duration-700 ${isSubmittingReminder ? `opacity-0 scale-75 ${isMobile ? '' : 'blur-sm'}` : 'opacity-100'}`}>
                 <div className="w-12 h-12 sm:w-16 sm:h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 mb-4 sm:mb-6">
                   <Clock size={isMobile ? 24 : 32} />
                 </div>
@@ -1608,7 +1608,7 @@ const App: React.FC = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsCertificateModalOpen(false)}
-              className="absolute inset-0 bg-white/40 backdrop-blur-xl"
+              className={`absolute inset-0 bg-white/${isMobile ? '80' : '40'} ${isMobile ? '' : 'backdrop-blur-xl'}`}
             />
 
             <div className="relative z-10 w-full max-w-lg flex flex-col items-center">
@@ -1987,7 +1987,7 @@ const App: React.FC = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-stone-900/60 backdrop-blur-md"
+              className={`absolute inset-0 bg-stone-900/${isMobile ? '80' : '60'} ${isMobile ? '' : 'backdrop-blur-md'}`}
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -2055,7 +2055,7 @@ const App: React.FC = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => !isLoggingIn && setIsLoginModalOpen(false)}
-              className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm"
+              className={`absolute inset-0 bg-stone-900/${isMobile ? '70' : '40'} ${isMobile ? '' : 'backdrop-blur-sm'}`}
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -2185,7 +2185,7 @@ const App: React.FC = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsDeleteConfirmOpen(false)}
-              className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm"
+              className={`absolute inset-0 bg-stone-900/${isMobile ? '70' : '40'} ${isMobile ? '' : 'backdrop-blur-sm'}`}
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -2367,7 +2367,7 @@ const TimeTunnel = () => {
       width: isMobile 
         ? 0.5 + Math.random() * 5 // Mobile: 0.5px to 5.5px
         : 0.5 + Math.random() * 6, // Desktop: 0.5px to 6.5px
-      blur: Math.random() > 0.8 ? 2 : 0.5, // Some streaks are blurrier for depth
+      blur: isMobile ? 0 : (Math.random() > 0.8 ? 2 : 0.5), // Disable blur on mobile for performance
     }));
   }, [streakCount, isMobile]);
   
@@ -2427,12 +2427,12 @@ const TimeTunnel = () => {
 
       {/* Central Vanishing Point */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-        <div className="w-64 h-64 bg-blue-400/20 rounded-full blur-[80px] animate-pulse" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-white rounded-full blur-sm shadow-[0_0_60px_#fff]" />
+        <div className={`w-32 h-32 bg-blue-400/20 rounded-full ${isMobile ? 'blur-3xl' : 'blur-[80px]'} animate-pulse`} />
+        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full ${isMobile ? 'blur-[2px]' : 'blur-sm'} shadow-[0_0_60px_#fff]`} />
         <motion.div 
           animate={{ scale: [1, 2, 1], opacity: [0.4, 0.7, 0.4] }}
           transition={{ duration: 1.5, repeat: Infinity }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-blue-200/30 rounded-full blur-3xl" 
+          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-blue-200/30 rounded-full ${isMobile ? 'blur-xl' : 'blur-3xl'}`} 
         />
       </div>
 
