@@ -2330,14 +2330,14 @@ const App: React.FC = () => {
 };
 
 const TimeTunnel = () => {
-  const [streakCount, setStreakCount] = useState(window.innerWidth < 768 ? 340 : 320);
+  const [streakCount, setStreakCount] = useState(window.innerWidth < 768 ? 220 : 320);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const stars = Array.from({ length: 100 });
 
   useEffect(() => {
     const updateCount = () => {
       const mobile = window.innerWidth < 768;
-      setStreakCount(mobile ? 340 : 320);
+      setStreakCount(mobile ? 220 : 320);
       setIsMobile(mobile);
     };
     updateCount();
@@ -2427,12 +2427,12 @@ const TimeTunnel = () => {
 
       {/* Central Vanishing Point */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-        <div className={`w-32 h-32 bg-blue-400/20 rounded-full ${isMobile ? 'blur-3xl' : 'blur-[80px]'} animate-pulse`} />
-        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full ${isMobile ? 'blur-[2px]' : 'blur-sm'} shadow-[0_0_60px_#fff]`} />
+        <div className={`${isMobile ? 'w-[19.2px] h-[19.2px]' : 'w-32 h-32'} bg-blue-400/20 rounded-full ${isMobile ? 'blur-3xl' : 'blur-[80px]'} animate-pulse`} />
+        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ${isMobile ? 'w-[4.8px] h-[4.8px]' : 'w-8 h-8'} bg-white rounded-full ${isMobile ? 'blur-[2px]' : 'blur-sm'} shadow-[0_0_60px_#fff]`} />
         <motion.div 
           animate={{ scale: [1, 2, 1], opacity: [0.4, 0.7, 0.4] }}
           transition={{ duration: 1.5, repeat: Infinity }}
-          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-blue-200/30 rounded-full ${isMobile ? 'blur-xl' : 'blur-3xl'}`} 
+          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ${isMobile ? 'w-[9.6px] h-[9.6px]' : 'w-16 h-16'} bg-blue-200/30 rounded-full ${isMobile ? 'blur-xl' : 'blur-3xl'}`} 
         />
       </div>
 
