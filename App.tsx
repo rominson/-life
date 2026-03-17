@@ -774,7 +774,7 @@ const App: React.FC = () => {
 
     try {
       // Add a bit of artificial delay for the time tunnel effect
-      await new Promise(resolve => setTimeout(resolve, 2200));
+      await new Promise(resolve => setTimeout(resolve, 1400));
 
       // Calculate unlock date
       const birth = new Date(birthDate);
@@ -1552,7 +1552,7 @@ const App: React.FC = () => {
                 rotateZ: [0, 5, 15],
                 filter: isMobile ? ["none", "none", "none"] : ["blur(0px)", "blur(2px)", "blur(10px)"]
               } : { opacity: 1, scale: 1, y: 0 }}
-              transition={isSubmittingReminder ? { duration: 2.2, ease: "easeIn" } : {}}
+              transition={isSubmittingReminder ? { duration: 1.4, ease: "easeIn" } : {}}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="relative z-10 bg-white w-full max-w-[85%] sm:max-w-md max-h-[80vh] overflow-y-auto p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl border border-stone-100"
             >
