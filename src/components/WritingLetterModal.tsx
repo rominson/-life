@@ -61,13 +61,10 @@ export const WritingLetterModal: React.FC<WritingLetterModalProps> = ({
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative z-10 bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-stone-100 overflow-hidden flex flex-col max-h-[90vh]"
+            className="relative z-10 bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-stone-100 overflow-hidden flex flex-col max-h-[90vh] md:scale-100 scale-[0.6] origin-center"
           >
             <div className="p-6 md:p-8 border-b border-stone-50 flex items-center justify-between bg-stone-50/30">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center text-white">
-                  <Feather size={20} />
-                </div>
                 <div>
                   <h2 className="text-xl font-serif font-bold text-stone-800">Write to the Future</h2>
                   <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">Bridging the Gap of Time</p>

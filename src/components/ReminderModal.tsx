@@ -88,41 +88,40 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
             } : { opacity: 1, scale: 1, y: 0 }}
             transition={isSubmittingReminder ? { duration: 2.2, ease: "easeIn" } : {}}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative z-10 bg-white/95 backdrop-blur-sm w-full max-w-[340px] sm:max-w-md p-6 sm:p-8 rounded-[2.5rem] shadow-2xl border border-stone-100 overflow-hidden"
+            className="relative z-10 bg-white w-full max-w-[320px] sm:max-w-md p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl border border-stone-100 overflow-hidden"
           >
             <div className={`flex flex-col items-center text-center transition-all duration-700 ${isSubmittingReminder ? 'opacity-0 scale-75 blur-sm' : 'opacity-100'}`}>
-              <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 mb-6">
-                <Clock size={32} />
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 mb-4 sm:mb-6">
+                <Clock size={24} className="sm:w-8 sm:h-8" />
               </div>
               <h3 className="text-xl sm:text-2xl font-serif font-bold text-stone-800 mb-2 sm:mb-3">Enable Future Reminder</h3>
-              <p className="text-stone-500 text-xs sm:text-sm leading-relaxed mb-4 sm:mb-6">
+              <p className="text-stone-500 text-[11px] sm:text-sm leading-relaxed mb-4 sm:mb-6">
                 Time flies, and we worry you might forget this letter. When the capsule unlocks at <span className="font-bold text-emerald-600">Age {pendingLetter?.age}</span>, we will notify you via SMS immediately.
               </p>
 
               <div className="w-full space-y-3 sm:space-y-4">
-                <div className="bg-emerald-50/50 p-4 sm:p-6 rounded-2xl border border-emerald-100 flex flex-col items-center">
+                <div className="bg-emerald-50/50 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-emerald-100 flex flex-col items-center">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-full shadow-sm mb-3 sm:mb-4 flex items-center justify-center text-emerald-600">
-                    <Smartphone size={24} className="sm:hidden" />
-                    <Smartphone size={32} className="hidden sm:block" />
+                    <Smartphone size={24} className="sm:w-8 sm:h-8" />
                   </div>
                   <p className="text-[10px] sm:text-[11px] text-emerald-700 font-medium text-center">
-                    Reminder Number: <span className="font-bold">{(user as any)?.phone || 'Not Set'}</span><br/>
+                    Reminder Number: <span className="font-bold">{(user as any)?.phone}</span><br/>
                     Phone number is the most stable way to connect across time.
                   </p>
                 </div>
                 
-                <div className="flex flex-col gap-3 pt-2">
+                <div className="flex flex-col gap-2 sm:gap-3 pt-1 sm:pt-2">
                   <button 
                     disabled={isSubmittingReminder}
                     onClick={confirmLetter}
-                    className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full py-3 sm:py-4 bg-emerald-600 text-white rounded-xl sm:rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 text-sm sm:text-base"
                   >
                     {isSubmittingReminder ? 'Sending...' : 'Confirm Send'}
                   </button>
                   <button 
                     disabled={isSubmittingReminder}
                     onClick={onClose}
-                    className="w-full py-4 bg-transparent text-stone-400 rounded-2xl font-bold hover:text-stone-600 transition-all"
+                    className="w-full py-2 sm:py-4 bg-transparent text-stone-400 rounded-xl sm:rounded-2xl font-bold hover:text-stone-600 transition-all text-xs sm:text-sm"
                   >
                     Go Back
                   </button>

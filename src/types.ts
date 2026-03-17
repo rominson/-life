@@ -10,14 +10,15 @@ export interface FutureLetter {
   id: string;
   content: string;
   age: number;
-  date: Date;
+  unlockAge: number;
+  createdAt: string;
 }
 
 export interface User {
   id: string;
   name: string;
   email?: string;
-  birthDate?: string;
+  phone?: string;
 }
 
 export interface Stats {
@@ -25,6 +26,7 @@ export interface Stats {
   monthsLived: number;
   yearsLived: number;
   percentLived: number;
+  remainingDays: number;
 }
 
 export interface Certificate {
