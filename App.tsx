@@ -2329,10 +2329,27 @@ const App: React.FC = () => {
   );
 };
 
+const TUNNEL_COLORS = [
+  '#3b82f6', // Blue
+  '#8b5cf6', // Purple
+  '#ec4899', // Pink
+  '#60a5fa', // Light Blue
+  '#f59e0b', // Amber
+  '#ef4444', // Red
+  '#10b981', // Emerald
+  '#facc15', // Yellow
+  '#ffffff', // White
+];
+
 const TimeTunnel = ({ isFrozen }: { isFrozen?: boolean }) => {
   const [streakCount, setStreakCount] = useState(window.innerWidth < 768 ? 150 : 320);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const stars = Array.from({ length: 100 });
+  const stars = useMemo(() => Array.from({ length: 100 }).map(() => ({
+    top: `${Math.random() * 100}%`,
+    left: `${Math.random() * 100}%`,
+    opacity: 0.2 + Math.random() * 0.7,
+    duration: 1.5 + Math.random() * 2.5
+  })), []);
 
   useEffect(() => {
     const updateCount = () => {
@@ -2345,53 +2362,41 @@ const TimeTunnel = ({ isFrozen }: { isFrozen?: boolean }) => {
     return () => window.removeEventListener('resize', updateCount);
   }, []);
 
-  const colors = [
-    '#3b82f6', // Blue
-    '#8b5cf6', // Purple
-    '#ec4899', // Pink
-    '#60a5fa', // Light Blue
-    '#f59e0b', // Amber
-    '#ef4444', // Red
-    '#10b981', // Emerald
-    '#facc15', // Yellow
-    '#ffffff', // White
-  ];
-
   const streakData = useMemo(() => {
     return Array.from({ length: streakCount }).map((_, i) => ({
       id: i,
-      angle: (i * 360) / streakCount + (Math.random() * 2 - 1), // Slight randomness in angle
+      angle: (i * 360) / streakCount + (Math.random() * 2 - 1),
       delay: Math.random() * -10,
-      duration: 0.5 + Math.random() * 1.5, // Faster, more dynamic range
-      color: colors[i % colors.length],
+      duration: 0.8 + Math.random() * 1.2,
+      color: TUNNEL_COLORS[i % TUNNEL_COLORS.length],
       width: isMobile 
-        ? 0.5 + Math.random() * 5 // Mobile: 0.5px to 5.5px
-        : 0.5 + Math.random() * 6, // Desktop: 0.5px to 6.5px
-      blur: isMobile ? 0 : (Math.random() > 0.8 ? 2 : 0.5), // Disable blur on mobile for performance
+        ? 1 + Math.random() * 4
+        : 0.5 + Math.random() * 6,
+      blur: isMobile ? 0 : (Math.random() > 0.8 ? 2 : 0.5),
     }));
   }, [streakCount, isMobile]);
   
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none z-0 bg-[#020617] ${isFrozen && isMobile ? 'opacity-40' : ''}`}>
+    <div className={`absolute inset-0 overflow-hidden pointer-events-none z-0 bg-[#020617] transition-opacity duration-500 opacity-100`}>
       {/* Deep Space Nebula Glows */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.25),transparent_70%)]" />
       
-      {/* Starfield */}
-      {stars.map((_, i) => (
+      {/* Starfield - Hidden on mobile per request */}
+      {!isMobile && stars.map((star, i) => (
         <motion.div
           key={`star-${i}`}
           className="absolute w-[1.5px] h-[1.5px] bg-white rounded-full shadow-[0_0_2px_#fff]"
-          initial={{ 
-            top: `${Math.random() * 100}%`, 
-            left: `${Math.random() * 100}%`,
-            opacity: Math.random() * 0.9
+          style={{ 
+            top: star.top, 
+            left: star.left,
+            opacity: star.opacity
           }}
-          animate={isFrozen && isMobile ? false : { opacity: [0.2, 1, 0.2], scale: [1, 1.2, 1] }}
-          transition={{ duration: 1.5 + Math.random() * 2.5, repeat: Infinity }}
+          animate={isFrozen ? { opacity: star.opacity, scale: 1 } : { opacity: [0.2, 1, 0.2], scale: [1, 1.2, 1] }}
+          transition={{ duration: star.duration, repeat: Infinity }}
         />
       ))}
 
-      {/* Radial Streaks - Enhanced Motion and Variety */}
+      {/* Radial Streaks */}
       {streakData.map((streak) => (
         <motion.div
           key={`streak-${streak.id}`}
@@ -2405,7 +2410,11 @@ const TimeTunnel = ({ isFrozen }: { isFrozen?: boolean }) => {
             originY: 0,
             originX: '50%'
           }}
-          animate={isFrozen && isMobile ? false : { 
+          animate={isFrozen && isMobile ? { 
+            height: '1500px', 
+            opacity: 0.8,
+            scaleX: 1
+          } : { 
             height: ['0px', '4500px'], 
             opacity: [0, 1, 0.5, 0],
             scaleX: [1, 1.2, 1],
@@ -2414,7 +2423,7 @@ const TimeTunnel = ({ isFrozen }: { isFrozen?: boolean }) => {
             duration: streak.duration,
             repeat: Infinity,
             delay: streak.delay,
-            ease: "circIn", // Stronger acceleration feel
+            ease: "circIn",
           }}
           className="absolute will-change-[height,opacity]"
           style={{
