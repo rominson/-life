@@ -1685,7 +1685,9 @@ const App: React.FC = () => {
                     </button>
                   </div>
                   <p className="mt-1 text-[9px] text-emerald-600/60 text-left leading-tight italic">
-                    Note: iPhone users please add to calendar manually, click Apple for details.
+                    {isMobile 
+                      ? "Note: iPhone users please add to calendar manually, click Apple for details."
+                      : "Note: Apple will download a .ics file. Open it to automatically add to your calendar."}
                   </p>
                 </div>
 
