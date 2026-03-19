@@ -1,5 +1,5 @@
 {
   "name": "LifeGrid",
-  "description": " a poetic life journey visualization tool. Record your life footprints, set future wishes, and send a letter across time and space to your future self. Supports mobile phone number login and real-time synchronization of your life data and time capsules.",
+  "description": " a poetic life journey visualization tool. Record your life footprints, set future wishes, and send a letter across time and space to your future self. Supports email login and real-time synchronization of your life data and time capsules.",
   "requestFramePermissions": []
 }

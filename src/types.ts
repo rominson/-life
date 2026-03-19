@@ -12,6 +12,8 @@ export interface FutureLetter {
   age: number;
   unlockAge: number;
   createdAt: string;
+  senderName?: string;
+  certificateImage?: string;
 }
 
 export interface User {

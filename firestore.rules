@@ -9,7 +9,8 @@ service cloud.firestore {
     // Document ID: userId (from Firebase Auth)
     // Fields:
     //   - name: string (optional) - Display name
-    //   - phone: string (required) - Phone number
+    //   - email: string (required) - Email address
+    //   - phone: string (optional) - Phone number
     //   - birthDate: string (optional) - ISO date string
     //
     // Collection: users/{userId}/goals
@@ -43,6 +44,10 @@ service cloud.firestore {
       return isAuthenticated() &&
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
           (request.auth.token.email == "huolang243893245@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
     }
 
     function isValidUser(data) {

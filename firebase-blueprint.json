@@ -6,11 +6,12 @@
       "type": "object",
       "properties": {
         "name": { "type": "string", "description": "User's display name" },
+        "email": { "type": "string", "description": "User's email address" },
         "phone": { "type": "string", "description": "User's phone number" },
         "birthDate": { "type": "string", "format": "date", "description": "User's birth date" },
         "createdAt": { "type": "string", "format": "date-time", "description": "Account creation time" }
       },
-      "required": ["phone"]
+      "required": ["name", "email"]
     },
     "Goal": {
       "title": "Goal",
