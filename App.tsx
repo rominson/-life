@@ -1600,20 +1600,87 @@ const App: React.FC = () => {
               } : { opacity: 1, scale: 1, y: 0 }}
               transition={isSubmittingReminder ? { duration: 1.3, ease: "easeIn" } : {}}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative z-10 bg-white w-full max-w-[85%] sm:max-w-md max-h-[80vh] overflow-y-auto p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl border border-stone-100"
+              className="relative z-10 bg-white w-full max-w-[85%] sm:max-w-md max-h-[80vh] flex flex-col rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl border border-stone-100 overflow-hidden"
             >
-              <div className={`flex flex-col items-center text-center transition-all duration-700 ${isSubmittingReminder ? `opacity-0 scale-75 ${isMobile ? '' : 'blur-sm'}` : 'opacity-100'}`}>
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 mb-4 sm:mb-6">
-                  <Clock size={isMobile ? 24 : 32} />
-                </div>
+              {/* Close Button */}
+              {!isSubmittingReminder && (
+                <button 
+                  onClick={() => setIsReminderModalOpen(false)}
+                  className="absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-600 transition-colors z-30 bg-white/60 backdrop-blur-sm rounded-full"
+                >
+                  <X size={20} />
+                </button>
+              )}
+
+              <div className={`flex-1 overflow-y-auto p-6 sm:p-8 flex flex-col items-center text-center transition-all duration-700 ${isSubmittingReminder ? `opacity-0 scale-75 ${isMobile ? '' : 'blur-sm'}` : 'opacity-100'}`}>
                 <h3 className="text-xl sm:text-2xl font-serif font-bold text-stone-800 mb-2 sm:mb-3">Enable Future Reminder</h3>
                 <p className="text-stone-500 text-[11px] sm:text-sm leading-relaxed mb-4 sm:mb-6">
-                  Time flies, and we worry you might forget this letter. When the capsule unlocks at <span className="font-bold text-emerald-600">Age {pendingLetter?.age}</span>, we will notify you via Email immediately.
+                  It's a long journey. We highly recommend adding a reminder to your calendar to ensure you're notified when the capsule unlocks at <span className="font-bold text-emerald-600">Age {pendingLetter?.age}</span>.
                 </p>
 
+                {/* Calendar Reminder Section */}
+                <div className="w-full mb-3 py-2 px-3 bg-emerald-50/50 rounded-2xl border border-emerald-100/50">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Calendar size={14} className="text-emerald-600" />
+                    <span className="text-[10px] uppercase tracking-widest text-emerald-700 font-bold">Add to Calendar</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button 
+                      onClick={() => {
+                        if (!birthDate || !pendingLetter) return;
+                        const unlockDate = addYears(new Date(birthDate), pendingLetter.age);
+                        const departureYear = new Date().getFullYear();
+                        const link = generateGoogleCalendarLink(
+                          `Unlock [LifeGrid] Future Letter 💌`,
+                          unlockDate,
+                          `The letter you wrote to yourself in ${departureYear} has been unlocked. Click the link to open it: ${APP_URL}`
+                        );
+                        window.open(link, '_blank');
+                      }}
+                      className="py-1.5 bg-white border border-emerald-100 rounded-xl text-[10px] font-bold text-emerald-700 hover:bg-emerald-50 transition-all"
+                    >
+                      Google
+                    </button>
+                    <button 
+                      onClick={() => {
+                        if (!birthDate || !pendingLetter) return;
+                        const unlockDate = addYears(new Date(birthDate), pendingLetter.age);
+                        const departureYear = new Date().getFullYear();
+                        const link = generateOutlookCalendarLink(
+                          `Unlock [LifeGrid] Future Letter 💌`,
+                          unlockDate,
+                          `The letter you wrote to yourself in ${departureYear} has been unlocked. Click the link to open it: ${APP_URL}`
+                        );
+                        window.open(link, '_blank');
+                      }}
+                      className="py-1.5 bg-white border border-emerald-100 rounded-xl text-[10px] font-bold text-emerald-700 hover:bg-emerald-50 transition-all"
+                    >
+                      Outlook
+                    </button>
+                    <button 
+                      onClick={() => {
+                        if (!birthDate || !pendingLetter) return;
+                        const unlockDate = addYears(new Date(birthDate), pendingLetter.age);
+                        const departureYear = new Date().getFullYear();
+                        const link = downloadIcsFile(
+                          `Unlock [LifeGrid] Future Letter 💌`,
+                          unlockDate,
+                          `The letter you wrote to yourself in ${departureYear} has been unlocked. Click the link to open it: ${APP_URL}`
+                        );
+                      }}
+                      className="py-1.5 bg-white border border-emerald-100 rounded-xl text-[10px] font-bold text-emerald-700 hover:bg-emerald-50 transition-all"
+                    >
+                      Apple
+                    </button>
+                  </div>
+                  <p className="mt-1 text-[9px] text-emerald-600/60 text-left leading-tight italic">
+                    Note: Apple/System will download an .ics file. Open it to add the reminder to your calendar.
+                  </p>
+                </div>
+
                 {/* Name Editing Section */}
-                <div className="w-full mb-6 p-4 bg-stone-50 rounded-2xl border border-stone-100">
-                  <label className="block text-[10px] uppercase tracking-widest text-stone-400 font-bold mb-2 text-left">
+                <div className="w-full mb-3 py-2 px-3 bg-stone-50 rounded-2xl border border-stone-100">
+                  <label className="block text-[10px] uppercase tracking-widest text-stone-400 font-bold mb-0.5 text-left">
                     Sender Name
                   </label>
                   <div className="relative group">
@@ -1622,13 +1689,13 @@ const App: React.FC = () => {
                       value={onboardingName}
                       onChange={(e) => setOnboardingName(e.target.value)}
                       placeholder="Your name..."
-                      className="w-full bg-white border-2 border-transparent focus:border-emerald-500/20 focus:ring-4 focus:ring-emerald-500/5 rounded-xl px-4 py-3 text-stone-700 font-bold text-lg transition-all"
+                      className="w-full bg-white border-2 border-transparent focus:border-emerald-500/20 focus:ring-4 focus:ring-emerald-500/5 rounded-xl px-4 py-1.5 text-stone-700 font-bold text-lg transition-all"
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-300">
                       <Feather size={16} />
                     </div>
                   </div>
-                  <p className="mt-2 text-[10px] text-stone-400 text-left">
+                  <p className="mt-1 text-[10px] text-stone-400 text-left">
                     This name will be permanently engraved on your Time Certificate.
                   </p>
                 </div>
@@ -1641,13 +1708,6 @@ const App: React.FC = () => {
                       className="w-full py-3 sm:py-4 bg-emerald-600 text-white rounded-xl sm:rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 text-sm sm:text-base"
                     >
                       {isSubmittingReminder ? 'Sending...' : 'Confirm Send'}
-                    </button>
-                    <button 
-                      disabled={isSubmittingReminder}
-                      onClick={() => setIsReminderModalOpen(false)}
-                      className="w-full py-2 sm:py-4 bg-transparent text-stone-400 rounded-xl sm:rounded-2xl font-bold hover:text-stone-600 transition-all text-xs sm:text-sm"
-                    >
-                      Go Back
                     </button>
                   </div>
                 </div>
@@ -1714,14 +1774,14 @@ const App: React.FC = () => {
                   }}
                   className="w-full flex justify-center"
                 >
-                  <div className="w-full flex justify-center relative overflow-hidden py-4">
+                  <div className="w-full flex justify-center relative pt-2 pb-2">
                     {/* The Certificate Card (HTML version, hidden once image is ready) */}
                     <div 
-                      className="w-full flex justify-center"
+                      className={`w-full flex justify-center ${autoGeneratedCertImage ? 'hidden' : 'block'}`}
                       style={{ 
-                        transform: isMobile ? `scale(${Math.min(0.9, (window.innerWidth - 40) / 800)})` : 'scale(0.6)',
+                        transform: isMobile ? `scale(${Math.min(0.9, (window.innerWidth - 40) / 800)})` : 'scale(0.64)',
                         transformOrigin: 'top center',
-                        marginBottom: isMobile ? `-${800 * (1 - Math.min(0.9, (window.innerWidth - 40) / 800))}px` : '-320px'
+                        marginBottom: isMobile ? `-${1150 * (1 - Math.min(0.9, (window.innerWidth - 40) / 800))}px` : '-414px'
                       }}
                     >
                       <div 
@@ -1731,13 +1791,12 @@ const App: React.FC = () => {
                           transform: 'none',
                         }}
                         className={`
-                        p-5 rounded-sm shadow-2xl border-[20px] relative overflow-hidden transition-all duration-1000
+                        p-5 rounded-sm shadow-xl border-[20px] relative overflow-hidden transition-all duration-1000
                         mx-auto box-border shrink-0
                         ${allCertificates[currentCertificateIndex].isCenturyTraveler 
                           ? 'bg-[#020617] border-[#1e293b]' 
                           : 'bg-[#F5F2ED] border-white'
                         }
-                        ${autoGeneratedCertImage ? 'opacity-0 pointer-events-none' : 'opacity-100'}
                       `}>
                       {/* Inner Border/Glow for Century Traveler - Using a div instead of ring for more consistent capture */}
                       {allCertificates[currentCertificateIndex].isCenturyTraveler && (
@@ -1975,14 +2034,15 @@ const App: React.FC = () => {
 
                     {/* Static Image Version (Visible once ready, allows direct long-press) */}
                     {autoGeneratedCertImage && (
-                      <div className="absolute inset-0 flex justify-center items-start py-4 z-50">
+                      <div className="w-full flex justify-center pt-2 pb-2">
                         <img 
                           src={autoGeneratedCertImage} 
                           alt="Certificate" 
-                          className="w-full max-w-[800px] shadow-2xl rounded-sm border-[20px] border-transparent mx-auto"
+                          className="w-full shadow-xl rounded-sm mx-auto"
                           style={{ 
                             pointerEvents: 'auto',
-                            display: 'block'
+                            display: 'block',
+                            maxWidth: isMobile ? `${window.innerWidth - 40}px` : '512px'
                           }}
                         />
                       </div>
@@ -2185,7 +2245,7 @@ const App: React.FC = () => {
 
               {/* Pagination Indicator */}
               {allCertificates.length > 1 && (
-                <div className="mt-6 flex items-center gap-2 bg-[rgba(255,255,255,0.5)] backdrop-blur-md px-4 py-1.5 rounded-full border border-[rgba(231,229,228,0.5)] shadow-sm">
+                <div className="mt-4 flex items-center gap-2 bg-[rgba(255,255,255,0.5)] backdrop-blur-md px-4 py-1.5 rounded-full border border-[rgba(231,229,228,0.5)] shadow-sm">
                   {allCertificates.map((_, idx) => (
                     <button
                       key={idx}
@@ -2196,65 +2256,8 @@ const App: React.FC = () => {
                 </div>
               )}
 
-              {/* Calendar Reminder Section */}
-              <div className="mt-8 w-full p-6 bg-stone-50 rounded-[2rem] border border-stone-100">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600">
-                    <Calendar size={16} />
-                  </div>
-                  <div className="text-left">
-                    <h4 className="text-sm font-bold text-stone-800">Add to Calendar</h4>
-                    <p className="text-[10px] text-stone-400 uppercase tracking-widest">Don't miss the moment</p>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <button 
-                    onClick={() => {
-                      const cert = allCertificates[currentCertificateIndex];
-                      const link = generateGoogleCalendarLink(
-                        `开启[人生格]未来的信 💌`,
-                        cert.unlockDate,
-                        `你在 ${cert.departureYear} 年写给自己的信已经解锁了。点击链接回到网站开启：${APP_URL}`
-                      );
-                      window.open(link, '_blank');
-                    }}
-                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-stone-200 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-50 transition-all"
-                  >
-                    Google
-                  </button>
-                  <button 
-                    onClick={() => {
-                      const cert = allCertificates[currentCertificateIndex];
-                      const link = generateOutlookCalendarLink(
-                        `开启[人生格]未来的信 💌`,
-                        cert.unlockDate,
-                        `你在 ${cert.departureYear} 年写给自己的信已经解锁了。点击链接回到网站开启：${APP_URL}`
-                      );
-                      window.open(link, '_blank');
-                    }}
-                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-stone-200 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-50 transition-all"
-                  >
-                    Outlook
-                  </button>
-                  <button 
-                    onClick={() => {
-                      const cert = allCertificates[currentCertificateIndex];
-                      downloadIcsFile(
-                        `开启[人生格]未来的信 💌`,
-                        cert.unlockDate,
-                        `你在 ${cert.departureYear} 年写给自己的信已经解锁了。点击链接回到网站开启：${APP_URL}`
-                      );
-                    }}
-                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-stone-200 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-50 transition-all"
-                  >
-                    Apple / System
-                  </button>
-                </div>
-              </div>
-
               {/* Action Buttons */}
-              <div className="mt-6 md:mt-8 flex justify-center gap-4">
+              <div className="mt-4 md:mt-6 flex justify-center gap-4">
                 <button 
                   onClick={() => setIsCertificateModalOpen(false)}
                   className="px-8 py-3 bg-[rgba(245,245,244,0.8)] hover:bg-[rgba(231,229,228,0.8)] backdrop-blur-md text-stone-500 rounded-full text-sm font-bold transition-all border border-[rgba(231,229,228,0.5)] flex items-center gap-2"
