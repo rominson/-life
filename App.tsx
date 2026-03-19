@@ -174,26 +174,31 @@ const generateOutlookCalendarLink = (title: string, date: Date, description: str
 const downloadIcsFile = (title: string, date: Date, description: string) => {
   const start = date.toISOString().replace(/-|:|\.\d+/g, '');
   const end = new Date(date.getTime() + 3600000).toISOString().replace(/-|:|\.\d+/g, '');
+  const now = new Date().toISOString().replace(/-|:|\.\d+/g, '');
+  
+  // 优化 ICS 内容，增加标准字段以提高 iOS 兼容性
   const icsContent = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
+    'PRODID:-//LifeGrid//Future Letter//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
     'BEGIN:VEVENT',
+    `UID:${Date.now()}@lifegrid.app`,
+    `DTSTAMP:${now}`,
     `DTSTART:${start}`,
     `DTEND:${end}`,
     `SUMMARY:${title}`,
     `DESCRIPTION:${description}`,
+    'STATUS:CONFIRMED',
+    'SEQUENCE:0',
     'END:VEVENT',
     'END:VCALENDAR'
-  ].join('\n');
+  ].join('\r\n'); // 使用标准换行符
   
-  const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', 'future-letter-reminder.ics');
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  // 使用 Data URI 方式触发，这在 iOS 上更容易弹出“添加到日历”的系统对话框
+  const encodedIcs = encodeURIComponent(icsContent);
+  window.location.href = `data:text/calendar;charset=utf8,${encodedIcs}`;
 };
 
 interface ErrorBoundaryProps {
