@@ -294,6 +294,7 @@ const App: React.FC = () => {
     isCenturyTraveler?: boolean;
   } | null>(null);
   const [pendingLetter, setPendingLetter] = useState<{ content: string; age: number } | null>(null);
+  const [showAppleModal, setShowAppleModal] = useState(false);
   const [user, setUser] = useState<{ id: string; name: string; email?: string } | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -1665,13 +1666,18 @@ const App: React.FC = () => {
                     <button 
                       onClick={() => {
                         if (!birthDate || !pendingLetter) return;
-                        const unlockDate = addYears(new Date(birthDate), pendingLetter.age);
-                        const departureYear = new Date().getFullYear();
-                        const link = downloadIcsFile(
-                          `Unlock [LifeGrid] Future Letter 💌`,
-                          unlockDate,
-                          `The letter you wrote to yourself in ${departureYear} has been unlocked. Click the link to open it: ${APP_URL}`
-                        );
+                        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                        if (isMobile) {
+                          setShowAppleModal(true);
+                        } else {
+                          const unlockDate = addYears(new Date(birthDate), pendingLetter.age);
+                          const departureYear = new Date().getFullYear();
+                          downloadIcsFile(
+                            `Unlock [LifeGrid] Future Letter 💌`,
+                            unlockDate,
+                            `The letter you wrote to yourself in ${departureYear} has been unlocked. Click the link to open it: ${APP_URL}`
+                          );
+                        }
                       }}
                       className="py-1.5 bg-white border border-emerald-100 rounded-xl text-[10px] font-bold text-emerald-700 hover:bg-emerald-50 transition-all"
                     >
@@ -1679,7 +1685,7 @@ const App: React.FC = () => {
                     </button>
                   </div>
                   <p className="mt-1 text-[9px] text-emerald-600/60 text-left leading-tight italic">
-                    Note: Apple/System will download an .ics file. Open it to add the reminder to your calendar.
+                    Note: iPhone users please add to calendar manually, click Apple for details.
                   </p>
                 </div>
 
@@ -2637,6 +2643,57 @@ const App: React.FC = () => {
           )}
         </AnimatePresence>
       </AnimatePresence>
+
+      {/* Apple Calendar Mobile Modal */}
+      {showAppleModal && pendingLetter && birthDate && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-emerald-100"
+          >
+            <div className="flex justify-between items-start mb-4">
+              <div className="bg-emerald-50 p-2 rounded-xl">
+                <Calendar className="text-emerald-600" size={24} />
+              </div>
+              <button 
+                onClick={() => setShowAppleModal(false)}
+                className="p-1 hover:bg-stone-100 rounded-full transition-colors"
+              >
+                <X size={20} className="text-stone-400" />
+              </button>
+            </div>
+            
+            <h3 className="text-lg font-bold text-stone-800 mb-2">Add to Apple Calendar</h3>
+            <p className="text-sm text-stone-500 mb-4 leading-relaxed">
+              iOS Safari may restrict automatic calendar imports. Please copy the details below to your calendar manually:
+            </p>
+            
+            <div className="space-y-4">
+              <div className="p-3 bg-stone-50 rounded-xl border border-stone-100">
+                <label className="text-[10px] uppercase tracking-widest text-stone-400 font-bold block mb-1">Reminder Date</label>
+                <div className="text-stone-700 font-mono text-sm">
+                  {format(addYears(new Date(birthDate), pendingLetter.age), 'yyyy-MM-dd')} (Age {pendingLetter.age})
+                </div>
+              </div>
+              
+              <div className="p-3 bg-stone-50 rounded-xl border border-stone-100">
+                <label className="text-[10px] uppercase tracking-widest text-stone-400 font-bold block mb-1">Content to Copy</label>
+                <div className="text-stone-700 text-xs leading-relaxed break-words select-all">
+                  The letter you wrote to yourself in {new Date().getFullYear()} has been unlocked. Click the link to open it: {APP_URL}
+                </div>
+              </div>
+            </div>
+            
+            <button 
+              onClick={() => setShowAppleModal(false)}
+              className="w-full mt-6 py-3 bg-emerald-500 text-white rounded-2xl font-bold shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all"
+            >
+              Got it
+            </button>
+          </motion.div>
+        </div>
+      )}
     </div>
     </ErrorBoundary>
   );
