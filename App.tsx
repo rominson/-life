@@ -1850,7 +1850,7 @@ const App: React.FC = () => {
                                 <motion.div 
                                   initial={{ opacity: 0, scale: 0.5 }}
                                   animate={{ opacity: 1, scale: 1 }}
-                                  className="bg-gradient-to-r from-[rgba(37,99,235,0.2)] to-[rgba(79,70,229,0.2)] border border-[rgba(96,165,250,0.4)] px-5 py-2 rounded-full flex items-center gap-3 shadow-[0_0_15px_rgba(59,130,246,0.2)] whitespace-nowrap"
+                                  className="bg-gradient-to-r from-[rgba(37,99,235,0.2)] to-[rgba(79,70,229,0.2)] border border-[rgba(96,165,250,0.4)] px-5 py-2 rounded-full flex items-center gap-3 whitespace-nowrap"
                                 >
                                   <Sparkles size={20} className="text-[#93c5fd] shrink-0" />
                                   <span className="text-[16px] font-bold text-[#bfdbfe] uppercase tracking-[0.2em] whitespace-nowrap">22nd Century Witness</span>
@@ -1866,7 +1866,7 @@ const App: React.FC = () => {
                             </div>
                             <h2 className={`
                               text-[32px] font-serif font-light tracking-[0.2em] uppercase mb-4 transition-colors duration-1000 w-full mx-auto leading-tight max-w-none
-                              ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[#eff6ff] drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'text-[#292524]'}
+                              ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[#eff6ff]' : 'text-[#292524]'}
                             `}>
                               {allCertificates[currentCertificateIndex].isCenturyTraveler ? 'Century Traveler Time Guardian Certificate' : 'Time Guardian Certificate'}
                             </h2>
@@ -1945,8 +1945,7 @@ const App: React.FC = () => {
                             <div className="text-left relative flex items-center">
                               {/* QR Code for sharing */}
                               <div className={`
-                                p-2 rounded-lg bg-white shadow-sm transition-all duration-1000
-                                ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'ring-1 ring-[rgba(59,130,246,0.5)]' : ''}
+                                p-2 rounded-lg bg-white transition-all duration-1000
                               `}>
                                 <QRCodeSVG 
                                   value={window.location.href} 
@@ -1967,24 +1966,16 @@ const App: React.FC = () => {
                                 <div className={`
                                   absolute inset-0 rounded-[45%_55%_50%_50%/50%_45%_55%_50%] transition-colors duration-1000
                                   ${allCertificates[currentCertificateIndex].isCenturyTraveler 
-                                    ? 'bg-[#2E1065] shadow-[0_0_15px_rgba(139,92,246,0.4)]' 
-                                    : 'bg-[#8B1A1A] shadow-[2px_2px_8px_rgba(0,0,0,0.4)]'
+                                    ? 'bg-[#2E1065]' 
+                                    : 'bg-[#8B1A1A]'
                                   }
-                                `}
-                                style={{
-                                  boxShadow: allCertificates[currentCertificateIndex].isCenturyTraveler 
-                                    ? '0 0 15px rgba(139,92,246,0.4), inset -2px -2px 4px rgba(0,0,0,0.5)' 
-                                    : '4px 4px 12px rgba(0,0,0,0.4), inset -2px -2px 4px rgba(0,0,0,0.4)'
-                                }}></div>
+                                `}></div>
                                 
                                 {/* The inner stamped area - depressed into the wax */}
                                 <div className={`
                                   absolute inset-[10%] rounded-full flex items-center justify-center overflow-hidden border transition-colors duration-1000
                                   ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'bg-[#4C1D95] border-violet-400/30' : 'bg-[#991B1B] border-red-900/30'}
-                                `}
-                                style={{
-                                  boxShadow: 'inset 3px 3px 6px rgba(0,0,0,0.6), inset -2px -2px 4px rgba(255,255,255,0.1)'
-                                }}>
+                                `}>
                                   
                                   {/* Exquisite Pattern SVG with Gold Foil Effect - Scheme C: Tree of Rings */}
                                   <svg viewBox="0 0 100 100" className="w-[85%] h-[85%]">
@@ -2023,7 +2014,7 @@ const App: React.FC = () => {
                                 </div>
                                 
                                 {/* Realistic Surface Highlight */}
-                                <div className="absolute top-[10%] left-[10%] w-[40%] h-[40%] bg-gradient-to-br from-[rgba(255,255,255,0.2)] to-transparent rounded-full blur-lg pointer-events-none"></div>
+                                <div className="absolute top-[10%] left-[10%] w-[40%] h-[40%] bg-gradient-to-br from-[rgba(255,255,255,0.2)] to-transparent rounded-full pointer-events-none"></div>
                               </div>
                               <p className={`absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-[16px] font-bold tracking-[0.2em] uppercase transition-colors duration-1000 ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[rgba(96,165,250,0.7)]' : 'text-[#a8a29e]'}`}>
                                 Time Post · Rings
@@ -2105,7 +2096,7 @@ const App: React.FC = () => {
                                 <div className="absolute bottom-[10px] left-[10px] w-12 h-12 border-b border-l border-blue-400/30 rounded-bl-sm pointer-events-none z-30" />
                                 <div className="absolute bottom-[10px] right-[10px] w-12 h-12 border-b border-r border-blue-400/30 rounded-br-sm pointer-events-none z-30" />
                                 <div className="absolute top-10 left-1/2 -translate-x-1/2 w-full flex justify-center">
-                                  <div className="bg-gradient-to-r from-[rgba(37,99,235,0.2)] to-[rgba(79,70,229,0.2)] border border-[rgba(96,165,250,0.4)] px-5 py-2 rounded-full flex items-center gap-3 shadow-[0_0_15px_rgba(59,130,246,0.2)] whitespace-nowrap">
+                                  <div className="bg-gradient-to-r from-[rgba(37,99,235,0.2)] to-[rgba(79,70,229,0.2)] border border-[rgba(96,165,250,0.4)] px-5 py-2 rounded-full flex items-center gap-3 whitespace-nowrap">
                                     <Sparkles size={20} className="text-[#93c5fd] shrink-0" />
                                     <span className="text-[16px] font-bold text-[#bfdbfe] uppercase tracking-[0.2em] whitespace-nowrap">22nd Century Witness</span>
                                   </div>
@@ -2120,7 +2111,7 @@ const App: React.FC = () => {
                               </div>
                               <h2 className={`
                                 text-[32px] font-serif font-light tracking-[0.2em] uppercase mb-4 w-full mx-auto leading-tight max-w-none
-                                ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[#eff6ff] drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'text-[#292524]'}
+                                ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'text-[#eff6ff]' : 'text-[#292524]'}
                               `}>
                                 {allCertificates[currentCertificateIndex].isCenturyTraveler ? 'Century Traveler Time Guardian Certificate' : 'Time Guardian Certificate'}
                               </h2>
@@ -2162,10 +2153,9 @@ const App: React.FC = () => {
                             {/* Footer / Seal & QR Code */}
                             <div className="w-full relative flex justify-between items-center mt-4 min-h-[120px]">
                               <div className="text-left relative flex items-center">
-                                <div className={`
-                                  p-2 rounded-lg bg-white shadow-sm
-                                  ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'ring-1 ring-[rgba(59,130,246,0.5)]' : ''}
-                                `}>
+                              <div className={`
+                                p-2 rounded-lg bg-white transition-all duration-1000
+                              `}>
                                   <QRCodeSVG 
                                     value={window.location.href} 
                                     size={100}
@@ -2185,20 +2175,12 @@ const App: React.FC = () => {
                                       ? 'bg-[#2E1065]' 
                                       : 'bg-[#8B1A1A]'
                                     }
-                                  `}
-                                  style={{
-                                    boxShadow: allCertificates[currentCertificateIndex].isCenturyTraveler 
-                                      ? '0 0 15px rgba(139,92,246,0.4), inset -2px -2px 4px rgba(0,0,0,0.5)' 
-                                      : '4px 4px 12px rgba(0,0,0,0.4), inset -2px -2px 4px rgba(0,0,0,0.4)'
-                                  }}></div>
+                                  `}></div>
                                   
                                   <div className={`
                                     absolute inset-[10%] rounded-full flex items-center justify-center overflow-hidden border
                                     ${allCertificates[currentCertificateIndex].isCenturyTraveler ? 'bg-[#4C1D95] border-violet-400/30' : 'bg-[#991B1B] border-red-900/30'}
-                                  `}
-                                  style={{
-                                    boxShadow: 'inset 3px 3px 6px rgba(0,0,0,0.6), inset -2px -2px 4px rgba(255,255,255,0.1)'
-                                  }}>
+                                  `}>
                                     <svg viewBox="0 0 100 100" className="w-[85%] h-[85%]">
                                       <defs>
                                         <linearGradient id="goldGradientCapture" x1="0%" y1="0%" x2="100%" y2="100%">
